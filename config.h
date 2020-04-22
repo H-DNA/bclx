@@ -9,8 +9,9 @@ namespace dds
 	/* Configurations */
 	//#define	DEBUGGING
 	#define	MEM_REC
-	const uint32_t	ELEM_PER_UNIT	=	exp2(14);
-	const uint32_t	WORKLOAD	=	1;		//ms
+	const uint32_t	ELEM_PER_UNIT	=	exp2l(14);
+	const uint32_t	WORKLOAD	=	1;		//us
+	const uint32_t	BK_TH		=	exp2l(10);	//us
 	const uint32_t  MASTER_UNIT     =       0;
 
 	/* Aliases */

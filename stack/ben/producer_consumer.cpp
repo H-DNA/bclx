@@ -4,7 +4,7 @@
 #include "../inc/stack.h"
 
 using namespace dds;
-using namespace dds::bs;
+using namespace dds::ts;
 
 int main()
 {
