@@ -110,6 +110,8 @@ inline void compare_and_swap_sync(const GlobalPtr<T> &dst, const T *old_val, con
 	{
         	if (typeid(T) == typeid(bool))
                 	datatype = MPI_C_BOOL;
+		else if (typeid(T) == typeid(uint8_t))
+			datatype = MPI_UINT8_T;
 		else
 			printf("ERROR: The datatype not found!\n");
 	}

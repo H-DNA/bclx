@@ -1,5 +1,11 @@
 #The main file name of your program
-OUT = test
+OUT = producer_consumer
+
+#The number of units
+NUM_UNITS = 4
+
+#The backend
+BACKEND = MPI
 
 #The path of input files
 DIR_IN = ./ben
@@ -10,9 +16,6 @@ DIR_OUT = ./out
 #The path of BCL Core
 DIR_LIB = ../bcl_ext
 
-#The number of units
-NUM_UNITS = 4
-
 #The performance flags for the compiler
 FLAGS = -std=gnu++17 -O3
 
@@ -22,11 +25,11 @@ FLAGS = -std=gnu++17 -O3
 all : $(DIR_OUT)/$(OUT)
 
 $(DIR_OUT)/$(OUT) : $(DIR_IN)/$(OUT).cpp
-	mpic++ $(DIR_IN)/$(OUT).cpp -o $(DIR_OUT)/$(OUT) $(FLAGS) -I$(DIR_LIB)
+	mpic++ $(DIR_IN)/$(OUT).cpp -o $(DIR_OUT)/$(OUT) $(FLAGS) -I $(DIR_LIB) -D $(BACKEND)
 
 #Run your program
 run : $(DIR_OUT)/$(OUT)
-	mpirun -np $(NUM_UNITS) ./$(DIR_OUT)/$(OUT)
+	for i in `seq 5`; do mpirun -np $(NUM_UNITS) ./$(DIR_OUT)/$(OUT); done
 
 #Remove your executable
 clean :

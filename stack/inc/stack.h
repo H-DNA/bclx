@@ -1,20 +1,28 @@
 #ifndef STACK_H
 #define STACK_H
 
-#include "../../lib/common.h"	//Common
+#include "../config.h"			//Configurations
 
-#include "stack_blocking.h"	//Blocking Stack using the MCS Lock
+#include "../../memory/memory.h"	//Global Memory Management
 
-#include "stack_blocking2.h"	//Blocking Stack 2 using the MCS Lock
+#include "stack_blocking.h"		//Blocking Stack using the MCS Lock
 
-#include "stack_treiber.h"	//Treiber Stack
+#include "stack_blocking2.h"		//Blocking Stack 2 using the MCS Lock
 
-#include "stack_eb.h"		//Elimination-Backoff Stack
+#include "stack_treiber.h"		//Treiber Stack
 
-#include "stack_ts_stutter.h"	//Time-Stamped Stack using TS-interval&stutter
+#include "stack_treiber2.h"		//Treiber Stack 2
 
-#include "stack_ts_atomic.h"	//Time-Stamped Stack using TS-interval&atomic
+#include "stack_eb.h"			//Elimination-Backoff Stack
 
-#include "stack_ts_cas.h"	//Time-Stamped Stack using TS-interval&cas
+#include "stack_eb2.h"			//Elimination-Backoff Stack 2
+
+#include "stack_ts_stutter.h"		//Time-Stamped Stack using TS-interval&stutter
+
+#include "stack_ts_atomic.h"		//Time-Stamped Stack using TS-interval&atomic
+
+#include "stack_ts_atomic2.h"		//Time-Stamped Stack using TS-atomic
+
+#include "stack_ts_cas.h"		//Time-Stamped Stack using TS-interval&cas
 
 #endif /* STACK_H */

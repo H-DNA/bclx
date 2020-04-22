@@ -8,16 +8,11 @@ using namespace dds::ts;
 
 int main()
 {
-	uint32_t i, value;
-	bool state;
-	clock_t start, end;
-	double cpu_time_used;
+	uint32_t	i,
+			value;
+	bool		state;
 
         init();
-
-	if (rank() == MASTER_UNIT)
-		printf("----------------------------------------------------------\n");
-	barrier();
 
 	stack<uint32_t> myStack;
 
@@ -32,7 +27,6 @@ int main()
 		printf("----------------------------------------------------------\n");
 	barrier();
 
-	//start = clock();
 	for (i = 0; i < ELEM_PER_UNIT; ++i)
 	{
 		state = myStack.pop(&value);
@@ -41,9 +35,6 @@ int main()
                 else //if (state == EMPTY)
 			printf("[%lu]EMPTY\n", rank());
 	}
-	//end = clock();
-	//cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-	//printf("cpu_time_used = %f microseconds\n", 1000000 * cpu_time_used);
 
 	myStack.print();
 	if (rank() == MASTER_UNIT)

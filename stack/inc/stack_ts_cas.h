@@ -3,11 +3,6 @@
 
 #include <unistd.h>
 #include "../../lib/utility.h"
-#ifdef MEM_REC
-	#include "../../memory/memory_hp.h"
-#else
-	#include "../../memory/memory_dang3.h"
-#endif
 
 namespace dds
 {
@@ -44,7 +39,7 @@ namespace tss_cas
 		timestamp getNewTS();
 
 	private:
-		const uint32_t		DELAY 	 	= 0;	//microseconds
+		const uint32_t		DELAY 	 	= 1;	//microseconds
 
 		gptr<uint64_t>		clock;			//logical clock of the unit
 	};

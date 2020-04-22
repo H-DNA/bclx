@@ -1,9 +1,6 @@
 #ifndef MEMORY_DANG2_H
 #define MEMORY_DANG2_H
 
-#include "common.h"
-#include "utility.h"
-
 namespace dds
 {
 

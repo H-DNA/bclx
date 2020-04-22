@@ -13,7 +13,10 @@ inline void store(const T &src, const GlobalPtr<T> &dst)
 template <typename T>
 inline void rput_sync(const T &src, const GlobalPtr<T> &dst)
 {
-	BCL::rwrite_sync(&src, dst, 1);
+	//if (BCL::rank() == dst.rank)
+	//	BCL::lwrite(&src, dst, 1);
+	//else //if (BCL::rank() != dst.rank)
+		BCL::rwrite_sync(&src, dst, 1);
 }
 
 template <typename T>
@@ -46,7 +49,10 @@ template <typename T>
 inline T rget_sync(const GlobalPtr<T> &src)
 {
 	T rv;
-	BCL::rread_sync(src, &rv, 1);
+	//if (BCL::rank() == src.rank)
+	//	BCL::lread(src, &rv, 1);
+	//else //if (BCL::rank() != src.rank)
+		BCL::rread_sync(src, &rv, 1);
 	return rv;
 }
 

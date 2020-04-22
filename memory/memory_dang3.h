@@ -1,8 +1,6 @@
 #ifndef MEMORY_DANG3_H
 #define MEMORY_DANG3_H
 
-#include "../lib/common.h"
-
 namespace dds
 {
 

@@ -1,5 +1,5 @@
-#ifndef STACK_EB_H
-#define STACK_EB_H
+#ifndef STACK_EB2_H
+#define STACK_EB2_H
 
 #include <random>
 #include "../../lib/backoff.h"
@@ -7,7 +7,7 @@
 namespace dds
 {
 
-namespace ebs
+namespace ebs2
 {
 
 	/* Macros */
@@ -80,12 +80,12 @@ namespace ebs
                 void stack_op();
 	};
 
-} /* namespace ebs */
+} /* namespace ebs2 */
 
 } /* namespace dds */
 
 template<typename T>
-dds::ebs::stack<T>::stack()
+dds::ebs2::stack<T>::stack()
 {
         //synchronize
 	BCL::barrier();
@@ -104,7 +104,7 @@ dds::ebs::stack<T>::stack()
         if (BCL::rank() == MASTER_UNIT)
 	{
                 BCL::store(NULL_PTR_E, top);
-                printf("*\tSTACK\t\t:\tEBS\t\t\t*\n");
+                printf("*\tSTACK\t\t:\tEBS2\t\t\t*\n");
 	}
 	else //if (BCL::rank() != MASTER_UNIT)
 		top.rank = MASTER_UNIT;
@@ -114,7 +114,7 @@ dds::ebs::stack<T>::stack()
 }
 
 template<typename T>
-dds::ebs::stack<T>::~stack()
+dds::ebs2::stack<T>::~stack()
 {
 	if (BCL::rank() != MASTER_UNIT)
 		top.rank = BCL::rank();
@@ -125,7 +125,7 @@ dds::ebs::stack<T>::~stack()
 }
 
 template<typename T>
-void dds::ebs::stack<T>::push(const T &value)
+void dds::ebs2::stack<T>::push(const T &value)
 {
 	unit_info<T> 	temp;
 	gptr<T>		tempAddr;
@@ -144,11 +144,11 @@ void dds::ebs::stack<T>::push(const T &value)
 	BCL::rput_sync(value, tempAddr);
 	BCL::store(temp, p);
 
-	stack_op();
+	less_op();
 }
 
 template<typename T>
-bool dds::ebs::stack<T>::pop(T *value)
+bool dds::ebs2::stack<T>::pop(T *value)
 {
 	unit_info<T> temp;
 
@@ -156,7 +156,7 @@ bool dds::ebs::stack<T>::pop(T *value)
 	temp.op = POP;
 	BCL::store(temp, p);
 
-	stack_op();
+	less_op();
 
 	gptr<gptr<elem<T>>> tempAddr = {p.rank, p.ptr};
 	gptr<elem<T>> tempAddr2 = BCL::load(tempAddr);
@@ -179,7 +179,7 @@ bool dds::ebs::stack<T>::pop(T *value)
 }
 
 template<typename T>
-void dds::ebs::stack<T>::print()
+void dds::ebs2::stack<T>::print()
 {
 	//synchronize
 	BCL::barrier();
@@ -202,7 +202,7 @@ void dds::ebs::stack<T>::print()
 }
 
 template<typename T>
-bool dds::ebs::stack<T>::try_perform_stack_op()
+bool dds::ebs2::stack<T>::try_perform_stack_op()
 {
 	unit_info<T>		pVal;
 	gptr<elem<T>>		oldTopAddr;
@@ -271,7 +271,7 @@ bool dds::ebs::stack<T>::try_perform_stack_op()
 }
 
 template<typename T>
-uint32_t dds::ebs::stack<T>::get_position()
+uint32_t dds::ebs2::stack<T>::get_position()
 {
 	uint32_t 	min, max;
 
@@ -287,7 +287,7 @@ uint32_t dds::ebs::stack<T>::get_position()
 }
 
 template<typename T>
-void dds::ebs::stack<T>::adapt_width(const bool &dir)
+void dds::ebs2::stack<T>::adapt_width(const bool &dir)
 {
 	if (dir == SHRINK)
 	{
@@ -312,7 +312,7 @@ void dds::ebs::stack<T>::adapt_width(const bool &dir)
 }
 
 template<typename T>
-bool dds::ebs::stack<T>::try_collision(const gptr<unit_info<T>> &q, const uint32_t &him)
+bool dds::ebs2::stack<T>::try_collision(const gptr<unit_info<T>> &q, const uint32_t &him)
 {
 	location.rank = him;
 	unit_info<T> pVal = BCL::load(p);
@@ -344,7 +344,7 @@ bool dds::ebs::stack<T>::try_collision(const gptr<unit_info<T>> &q, const uint32
 }
 
 template<typename T>
-void dds::ebs::stack<T>::finish_collision()
+void dds::ebs2::stack<T>::finish_collision()
 {
 	unit_info<T> pVal = BCL::load(p);
 	if (pVal.op == POP)
@@ -357,7 +357,7 @@ void dds::ebs::stack<T>::finish_collision()
 }
 
 template<typename T>
-void dds::ebs::stack<T>::less_op()
+void dds::ebs2::stack<T>::less_op()
 {
 	uint32_t		myUID = BCL::rank(),
 				pos,
@@ -405,7 +405,7 @@ void dds::ebs::stack<T>::less_op()
 			}
 		}
 
-		bk.delay_dbl();
+		bk.delay_exp();
 		adapt_width(SHRINK);
 
 		location.rank = myUID;
@@ -422,10 +422,10 @@ void dds::ebs::stack<T>::less_op()
 }
 
 template<typename T>
-void dds::ebs::stack<T>::stack_op()
+void dds::ebs2::stack<T>::stack_op()
 {
 	if (!try_perform_stack_op())
 		less_op();
 }
 
-#endif /* STACK_EB_H */
+#endif /* STACK_EB2_H */

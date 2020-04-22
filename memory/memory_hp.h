@@ -1,9 +1,6 @@
 #ifndef MEMORY_HP_H
 #define MEMORY_HP_H
 
-#include "common.h"
-#include "utility.h"
-
 namespace dds
 {
 

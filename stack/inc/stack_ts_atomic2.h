@@ -1,5 +1,5 @@
-#ifndef STACK_TS_ATOMIC_H
-#define STACK_TS_ATOMIC_H
+#ifndef STACK_TS_ATOMIC2_H
+#define STACK_TS_ATOMIC2_H
 
 #include <unistd.h>
 #include "../../lib/utility.h"
@@ -7,7 +7,7 @@
 namespace dds
 {
 
-namespace tss_atomic
+namespace tss_atomic2
 {
 
 	/* Macros */
@@ -18,30 +18,20 @@ namespace tss_atomic
 	#endif
 
 	/* Data types */
-	struct timestamp
-	{
-                uint64_t  	start;
-                uint64_t  	end;
-
-		bool operator<(const timestamp &) const;
-	};
-
 	class time
 	{
 	public:
-		const uint64_t		ULLI_MIN 	= 0;			//lower bound
-		const uint64_t		ULLI_MAX 	= 18446744073709551615U;//upper bound
-                const timestamp		TS_MIN 		= {ULLI_MIN, ULLI_MIN};	//min TS
-                const timestamp		TS_MAX 		= {ULLI_MAX, ULLI_MAX};	//max TS
+		const uint64_t		TS_MIN 	= 0;			//lower bound
+		const uint64_t		TS_MAX 	= 18446744073709551615U;//upper bound
 
 		time();
 		~time();
-		timestamp getNewTS();
+		uint64_t getNewTS();
 
 	private:
-		const uint32_t		DELAY 	 	= 1;	//microseconds
+		const uint32_t		DELAY 	 = 1;	//microseconds
 
-		gptr<uint64_t>		clock;			//logical clock of the unit
+		gptr<uint64_t>		clock;		//logical clock of the unit
 	};
 
 	template <typename T>
@@ -49,7 +39,7 @@ namespace tss_atomic
 	{
                 gptr<elem<T>>	next;
 		bool		taken;
-		timestamp	ts;
+		uint64_t	ts;
 		T		value;
 	};
 
@@ -72,19 +62,14 @@ namespace tss_atomic
 
 		gptr<elem<T>> get_youngest(const gptr<elem<T>> &);
 		bool remove(const gptr<elem<T>> &, const gptr<elem<T>> &, T *);
-		bool try_rem(const timestamp &, bool &, T *);
+		bool try_rem(const uint64_t &, bool &, T *);
 	};
 
-} /* namespace tss_atomic */
+} /* namespace tss_atomic2 */
 
 } /* namespace dds */
 
-bool dds::tss_atomic::timestamp::operator<(const timestamp &ts) const
-{
-	return (this->end < ts.start);
-}
-
-dds::tss_atomic::time::time()
+dds::tss_atomic2::time::time()
 {
         clock = BCL::alloc<uint64_t>(1);
 	if (BCL::rank() == MASTER_UNIT)
@@ -93,30 +78,25 @@ dds::tss_atomic::time::time()
 		clock.rank = MASTER_UNIT;
 }
 
-dds::tss_atomic::time::~time()
+dds::tss_atomic2::time::~time()
 {
 	if (BCL::rank() != MASTER_UNIT)
 		clock.rank = BCL::rank();
         BCL::dealloc<uint64_t>(clock);
 }
 
-dds::tss_atomic::timestamp dds::tss_atomic::time::getNewTS()
+uint64_t dds::tss_atomic2::time::getNewTS()
 {
-	timestamp 	ts;
-	uint64_t 	one = 1;
+	uint64_t 	ts,
+		 	one = 1;
 
-	ts.start = BCL::fao_sync(clock, one, BCL::plus<uint64_t>{});
-
-	//delay
-	usleep(DELAY);
-
-        ts.end = BCL::fao_sync(clock, one, BCL::plus<uint64_t>{});
+	ts = BCL::fao_sync(clock, one, BCL::plus<uint64_t>{});
 
 	return ts;
 }
 
 template <typename T>
-dds::tss_atomic::stack<T>::stack()
+dds::tss_atomic2::stack<T>::stack()
 {
 	//synchronize
 	BCL::barrier();
@@ -125,24 +105,24 @@ dds::tss_atomic::stack<T>::stack()
 	BCL::store(NULL_PTR, top);
 
 	if (BCL::rank() == MASTER_UNIT)
-                printf("*\tSTACK\t\t:\tTSS-atomic\t\t*\n");
+                printf("*\tSTACK\t\t:\tTSS-atomic2\t\t*\n");
 
 	//synchronize
 	BCL::barrier();
 }
 
 template <typename T>
-dds::tss_atomic::stack<T>::~stack()
+dds::tss_atomic2::stack<T>::~stack()
 {
         BCL::dealloc<gptr<elem<T>>>(top);
 }
 
 template <typename T>
-void dds::tss_atomic::stack<T>::push(const T &value)
+void dds::tss_atomic2::stack<T>::push(const T &value)
 {
-        timestamp		ts;
+        uint64_t		ts;
 	gptr<gptr<elem<T>>>	addrTemp;
-	gptr<timestamp>		addrTemp2;
+	gptr<uint64_t>		addrTemp2;
 	gptr<elem<T>>		oldTopAddr,
 				newTopAddr;
 	elem<T>			oldTopVal,
@@ -184,10 +164,10 @@ void dds::tss_atomic::stack<T>::push(const T &value)
 }
 
 template <typename T>
-bool dds::tss_atomic::stack<T>::pop(T *value)
+bool dds::tss_atomic2::stack<T>::pop(T *value)
 {
 	//elimination
-	timestamp startTime = tim.getNewTS();
+	uint64_t 	startTime = tim.getNewTS();
 
 	bool success, result = NON_EMPTY;
 
@@ -199,7 +179,7 @@ bool dds::tss_atomic::stack<T>::pop(T *value)
 }
 
 template <typename T>
-void dds::tss_atomic::stack<T>::print()
+void dds::tss_atomic2::stack<T>::print()
 {
 	//synchronize
 	BCL::barrier();
@@ -219,8 +199,7 @@ void dds::tss_atomic::stack<T>::print()
 				topVal = BCL::rget_sync(topAddr);
 				if (!topVal.taken)
 				{
-					printf("[%d]value = %d, ts = {%lu, %lu}\n",
-							i, topVal.value, topVal.ts.start, topVal.ts.end);
+					printf("[%d]value = %d, ts = %lu\n", i, topVal.value, topVal.ts);
 					topVal.next.print();
 				}
 			}
@@ -232,7 +211,7 @@ void dds::tss_atomic::stack<T>::print()
 }
 
 template <typename T>
-dds::gptr<dds::tss_atomic::elem<T>> dds::tss_atomic::stack<T>::get_youngest(const gptr<elem<T>> &topAddr)
+dds::gptr<dds::tss_atomic2::elem<T>> dds::tss_atomic2::stack<T>::get_youngest(const gptr<elem<T>> &topAddr)
 {
 	gptr<elem<T>>	tempAddr;
 	elem<T>		tempVal;
@@ -247,7 +226,7 @@ dds::gptr<dds::tss_atomic::elem<T>> dds::tss_atomic::stack<T>::get_youngest(cons
 }
 
 template <typename T>
-bool dds::tss_atomic::stack<T>::remove(const gptr<elem<T>> &topVal, const gptr<elem<T>> &youngestAddr, T *value)
+bool dds::tss_atomic2::stack<T>::remove(const gptr<elem<T>> &topVal, const gptr<elem<T>> &youngestAddr, T *value)
 {
 	bool 			oldVal = false,
 				newVal = true,
@@ -294,10 +273,10 @@ bool dds::tss_atomic::stack<T>::remove(const gptr<elem<T>> &topVal, const gptr<e
 }
 
 template <typename T>
-bool dds::tss_atomic::stack<T>::try_rem(const timestamp &startTime, bool &result, T *value)
+bool dds::tss_atomic2::stack<T>::try_rem(const uint64_t &startTime, bool &result, T *value)
 {
 	int 			i;
-	timestamp		tsMax;
+	uint64_t		tsMax;
 	gptr<gptr<elem<T>>>	topTemp;
 	gptr<elem<T>>		topAddr,
 				tempAddr,
@@ -355,4 +334,4 @@ bool dds::tss_atomic::stack<T>::try_rem(const timestamp &startTime, bool &result
 	return remove(topAddr, youngestAddr, value);
 }
 
-#endif /* STACK_TS_ATOMIC_H */
+#endif /* STACK_TS_ATOMIC2_H */

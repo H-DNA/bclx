@@ -1,10 +1,6 @@
 #ifndef UTILITY_H
 #define UTILITY_H
 
-#include <unistd.h>
-#include <random>
-#include <cmath>
-
 namespace sds
 {
 
@@ -60,15 +56,6 @@ namespace sds
 
 	private:
 		elem<T>		*top;
-	};
-
-	class backoff
-	{
-	public:
-		backoff();
-		void delay();
-	private:
-		uint32_t	c;
 	};
 
 	/* Functions */
@@ -306,24 +293,12 @@ void sds::stack<T>::print()
 }
 /**/
 
-sds::backoff::backoff()
-{
-	c = 0;
-}
-
-void sds::backoff::delay()
-{
-	std::default_random_engine generator;
-        std::uniform_int_distribution<uint32_t> distribution(0, ++c);
-        usleep(exp2(distribution(generator)) - 1);
-}
-
 template <typename T>
 inline void sds::swap(T &a, T &b)
 {
-	T temp = a;
-	a = b;
-	b = temp;
+        T temp = a;
+        a = b;
+        b = temp;
 }
 /**/
 

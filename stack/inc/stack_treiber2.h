@@ -1,5 +1,5 @@
-#ifndef STACK_TREIBER_H
-#define STACK_TREIBER_H
+#ifndef STACK_TREIBER2_H
+#define STACK_TREIBER2_H
 
 #include <unistd.h>
 #include "../../lib/backoff.h"
@@ -7,7 +7,7 @@
 namespace dds
 {
 
-namespace ts
+namespace ts2
 {
 
 	/* Macros */
@@ -36,18 +36,22 @@ namespace ts
 		void print();		//collective
 
 	private:
-        	const gptr<elem<T>> 	NULL_PTR = nullptr; 	//is a null constant
+        	const gptr<elem<T>> 	NULL_PTR 	= 	nullptr; 	//is a null constant
+		const uint8_t		MAX_FAILURES 	= 	5;		//max CAS failures
 
 		memory<elem<T>>		mem;	//handles global memory
                 gptr<gptr<elem<T>>>	top;	//points to global address of the top
+		gptr<uint8_t>		sta;	//state
+		gptr<elem<T>>		tun;	//tunnel	
+		uint8_t			peer;
 	};
 
-} /* namespace ts */
+} /* namespace ts2 */
 
 } /* namespace dds */
 
 template<typename T>
-dds::ts::stack<T>::stack()
+dds::ts2::stack<T>::stack()
 {
 	//synchronize
 	BCL::barrier();
@@ -56,29 +60,38 @@ dds::ts::stack<T>::stack()
 	if (BCL::rank() == MASTER_UNIT)
 	{
                 BCL::store(NULL_PTR, top);
-		printf("*\tSTACK\t\t:\tTS\t\t\t*\n");
+		printf("*\tSTACK\t\t:\tTS2\t\t\t*\n");
 	}
 	else
 		top.rank = MASTER_UNIT;
+
+	sta = BCL::alloc<uint8_t>(1);
+	BCL::store((uint8_t) 0, sta);
+	tun = BCL::alloc<elem<T>>(1);
+
+	peer = (BCL::rank() + 1) % BCL::nprocs();
 
 	//synchronize
 	BCL::barrier();
 }
 
 template<typename T>
-dds::ts::stack<T>::~stack()
+dds::ts2::stack<T>::~stack()
 {
 	if (BCL::rank() != MASTER_UNIT)
 		top.rank = BCL::rank();
+	BCL::dealloc<uint8_t>(sta);
+	BCL::dealloc<elem<T>>(tun);
 	BCL::dealloc<gptr<elem<T>>>(top);
 }
 
 template<typename T>
-void dds::ts::stack<T>::push(const T &value)
+void dds::ts2::stack<T>::push(const T &value)
 {
         gptr<elem<T>> 		oldTopAddr,
 				newTopAddr;
-	backoff::backoff	bk;		
+	backoff::backoff	bk;
+	uint8_t			numFailures = 0;
 
 	//allocate global memory to the new elem
 	newTopAddr = mem.malloc();
@@ -91,29 +104,95 @@ void dds::ts::stack<T>::push(const T &value)
 		oldTopAddr = BCL::aget_sync(top);
 
 		//update new element (global memory)
-		#ifdef MEM_REC
-                	BCL::rput_sync({oldTopAddr, value}, newTopAddr);
-		#else
-                	BCL::store({oldTopAddr, value}, newTopAddr);
-		#endif
+                BCL::rput_sync({oldTopAddr, value}, newTopAddr);
 
 		//update top (global memory)
 		if (BCL::cas_sync(top, oldTopAddr, newTopAddr) == oldTopAddr)
+		{
+			//if (BCL::rank() == MASTER_UNIT)
+			//{
+				gptr<uint8_t>	peerStaAddr;
+				uint8_t		peerStaVal;	
+				gptr<elem<T>>	peerTunAddr;
+				elem<T>		peerTunVal;	
+
+				while (true)
+				{
+					printf("[%lu]CAC\n", BCL::rank());
+
+					//help someone
+					peerStaAddr = {peer, sta.ptr};
+					peerTunAddr = {peer, tun.ptr};
+					peerStaVal = BCL::cas_sync(peerStaAddr, (uint8_t) 1, (uint8_t) 0);
+					if (peerStaVal == 1)	//this peer needs help
+					{
+						//help it
+                				oldTopAddr = BCL::aget_sync(top);
+						peerTunVal = BCL::rget_sync(peerTunAddr);
+                				BCL::rput_sync({oldTopAddr, peerTunVal.value}, peerTunVal.next);
+                				if (BCL::cas_sync(top, oldTopAddr, peerTunVal.next) == oldTopAddr)
+						{
+							BCL::aput_sync((uint8_t) 2, peerStaAddr);	//help succeeds
+							return;
+						}
+						else
+						{
+							BCL::aput_sync((uint8_t) 3, peerStaAddr);	//help fails
+
+							//next peer
+							peer = (peer + 1) / BCL::nprocs();
+							if (peer == BCL::rank())
+							{
+								peer = (peer + 1) / BCL::nprocs();
+								return;
+							}
+						}
+					}
+					else	//this peer needs no help
+					{
+						//next peer
+                                                peer = (peer + 1) / BCL::nprocs();
+						if (peer == BCL::rank())
+						{
+							peer = (peer + 1) / BCL::nprocs();
+							return;
+						}
+					}
+				}
+			//}
+
 			return;
+		}
 		else //if (BCL::cas_sync(top, oldTopAddr, newTopAddr) != oldTopAddr)
 		{
 			//debugging
-			#if DEBUGGING
-				++failure;
-			#endif
+			++failure;
 
-			bk.delay_exp();
+			if (++numFailures > MAX_FAILURES)
+			{
+				BCL::store({newTopAddr, value}, tun);
+				BCL::aput_sync((uint8_t) 1, sta);
+				bk.delay_dbl();
+				if (BCL::cas_sync(sta, (uint8_t) 1, (uint8_t) 0) != 1)	//some process is trying to help me
+				{
+					printf("CHO!\n");
+
+					uint8_t	dang;
+					do {
+						dang = BCL::aget_sync(sta);
+					} while (dang == 0);
+					if (dang == 2)
+						return;
+				}
+			}
+			else {}
+				bk.delay_dbl();
 		}
 	}
 }
 
 template<typename T>
-bool dds::ts::stack<T>::pop(T *value)
+bool dds::ts2::stack<T>::pop(T *value)
 {
 	elem<T> 		oldTopVal;
 	gptr<elem<T>> 		oldTopAddr,
@@ -127,8 +206,8 @@ bool dds::ts::stack<T>::pop(T *value)
 
 		if (oldTopAddr == nullptr)
 		{
-			//update hazard pointers
 			#ifdef MEM_REC
+        			//update hazard pointers
         			BCL::aput_sync(NULL_PTR, mem.hp);
 			#endif
 
@@ -136,8 +215,8 @@ bool dds::ts::stack<T>::pop(T *value)
 			return EMPTY;
 		}
 
-		//update hazard pointers
 		#ifdef MEM_REC
+			//update hazard pointers
 			BCL::aput_sync(oldTopAddr, mem.hp);
 			oldTopAddr2 = BCL::aget_sync(top);
 			if (oldTopAddr != oldTopAddr2)
@@ -153,16 +232,14 @@ bool dds::ts::stack<T>::pop(T *value)
 		else //if (BCL::cas_sync(top, oldTopAddr, oldTopVal.next) != oldTopAddr)
 		{
 			//debugging
-			#if DEBUGGING
-				++failure;
-			#endif
+			++failure;
 
 			bk.delay_exp();
 		}
 	}
 
-	//update hazard pointers
 	#ifdef MEM_REC
+		//update hazard pointers
 		BCL::aput_sync(NULL_PTR, mem.hp);
 	#endif
 
@@ -176,7 +253,7 @@ bool dds::ts::stack<T>::pop(T *value)
 }
 
 template<typename T>
-void dds::ts::stack<T>::print()
+void dds::ts2::stack<T>::print()
 {
 	//synchronize
 	BCL::barrier();
@@ -198,5 +275,5 @@ void dds::ts::stack<T>::print()
 	BCL::barrier();
 }
 
-#endif /* STACK_TREIBER_H */
+#endif /* STACK_TREIBER2_H */
 

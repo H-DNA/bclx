@@ -1,11 +1,6 @@
 #ifndef STACK_BLOCKING2_H
 #define STACK_BLOCKING2_H
 
-#ifdef MEM_REC
-        #include "../../memory/memory_dang2.h"
-#else
-        #include "../../memory/memory_dang3.h"
-#endif
 #include "../../lock/lock_mcs.h"
 
 namespace dds
@@ -96,7 +91,11 @@ void dds::bs2::stack<T>::push(const T &value)
 	oldTopAddr = BCL::fao_sync(top, newTopAddr, BCL::replace<uint64_t>{});
 
 	//update new element (global memory)
-        BCL::rput_sync({oldTopAddr, value}, newTopAddr);
+	#ifdef MEM_REC
+        	BCL::rput_sync({oldTopAddr, value}, newTopAddr);
+	#else
+                BCL::store({oldTopAddr, value}, newTopAddr);
+	#endif
 
 	//synchronize
 	lock.release();

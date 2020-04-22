@@ -3,11 +3,6 @@
 
 #include <unistd.h>
 #include "../../lib/utility.h"
-#ifdef MEM_REC
-	#include "../../memory/memory_hp.h"
-#else
-	#include "../../memory/memory_dang3.h"
-#endif
 
 namespace dds
 {
