@@ -18,8 +18,8 @@ namespace backoff
 		void delay_inc();
 
         private:
-		const uint32_t	BK_TH = dds::BK_TH;
-                uint32_t        c;
+		const uint64_t	BK_TH = dds::BK_TH;
+                uint64_t        c;
 	};
 
 } /* namespace backoff */
@@ -31,25 +31,27 @@ backoff::backoff::backoff()
 
 void backoff::backoff::delay_exp()
 {
-	if (exp2(c) < BK_TH)
-		++c;
+	++c;
+	if (exp2(c) > BK_TH)
+		c = 1;
         std::default_random_engine generator;
-        std::uniform_int_distribution<uint32_t> distribution(0, c);
+        std::uniform_int_distribution<uint64_t> distribution(0, c);
         usleep(exp2(distribution(generator)) - 1);
 }
 
 void backoff::backoff::delay_dbl()
 {
-	uint32_t temp = exp2(c);
-        usleep(temp);
-	if (temp < BK_TH)
-		++c;
+        usleep(exp2(c));
+	++c;
+	if (exp2(c) > BK_TH)
+		c = 0;
 }
 
 void backoff::backoff::delay_inc()
 {
-	if (c < BK_TH)
-		++c;
+	++c;
+	if (c > BK_TH)
+		c = 1;
 	usleep(c);
 }
 

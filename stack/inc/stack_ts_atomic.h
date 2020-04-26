@@ -39,9 +39,9 @@ namespace tss_atomic
 		timestamp getNewTS();
 
 	private:
-		const uint32_t		DELAY 	 	= 1;	//microseconds
+		const uint32_t		DELAY 	 	= TSS_INTERVAL;	//microseconds
 
-		gptr<uint64_t>		clock;			//logical clock of the unit
+		gptr<uint64_t>		clock;				//logical clock of the unit
 	};
 
 	template <typename T>
