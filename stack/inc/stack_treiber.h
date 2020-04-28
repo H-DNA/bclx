@@ -103,7 +103,7 @@ void dds::ts::stack<T>::push(const T &value)
 		else //if (BCL::cas_sync(top, oldTopAddr, newTopAddr) != oldTopAddr)
 		{
 			//debugging
-			#if DEBUGGING
+			#ifdef DEBUGGING
 				++failure;
 			#endif
 
@@ -153,7 +153,7 @@ bool dds::ts::stack<T>::pop(T *value)
 		else //if (BCL::cas_sync(top, oldTopAddr, oldTopVal.next) != oldTopAddr)
 		{
 			//debugging
-			#if DEBUGGING
+			#ifdef DEBUGGING
 				++failure;
 			#endif
 

@@ -37,8 +37,15 @@ int main()
 
         stack<uint32_t> myStack;
 
-	for (i = 0; i < num_ops; ++i)
+	BCL::barrier();
+
+	for (i = 0; i < num_ops / 2; ++i)
 	{
+		//debugging
+		#ifdef DEBUGGING
+			printf ("[%lu]%u\n", BCL::rank(), i);
+		#endif
+
 		value = i;
 		myStack.push(value);
 	}

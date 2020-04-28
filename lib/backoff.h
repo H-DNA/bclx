@@ -32,18 +32,18 @@ backoff::backoff::backoff()
 void backoff::backoff::delay_exp()
 {
 	++c;
-	if (exp2(c) > BK_TH)
+	if (exp2l(c) > BK_TH)
 		c = 1;
         std::default_random_engine generator;
-        std::uniform_int_distribution<uint64_t> distribution(0, c);
-        usleep(exp2(distribution(generator)) - 1);
+        std::uniform_int_distribution<uint64_t> distribution(0, exp2l(c) - 1);
+        usleep(distribution(generator));
 }
 
 void backoff::backoff::delay_dbl()
 {
-        usleep(exp2(c));
+        usleep(exp2l(c));
 	++c;
-	if (exp2(c) > BK_TH)
+	if (exp2l(c) > BK_TH)
 		c = 0;
 }
 
