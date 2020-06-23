@@ -1,5 +1,5 @@
-#ifndef STACK_EB_H
-#define STACK_EB_H
+#ifndef STACK_EB_NA_H
+#define STACK_EB_NA_H
 
 #include <random>
 #include "../../lib/backoff.h"
@@ -7,7 +7,7 @@
 namespace dds
 {
 
-namespace ebs
+namespace ebs_na
 {
 
 	/* Macros */
@@ -71,6 +71,10 @@ namespace ebs
 		gptr<uint32_t>			collision;	//contains the rank of the unit trying to collide
                 adapt_params			adapt;          //contains the adaptative elimination backoff
 
+		MPI_Comm			nodeComm;
+		int				nodeSize;
+		int				*table;
+
 		uint32_t get_position();
 		void adapt_width(const bool &);
 		bool try_collision(const gptr<unit_info<T>> &, const uint32_t &);
@@ -80,15 +84,29 @@ namespace ebs
                 void stack_op();
 	};
 
-} /* namespace ebs */
+} /* namespace ebs_na */
 
 } /* namespace dds */
 
 template<typename T>
-dds::ebs::stack<T>::stack()
+dds::ebs_na::stack<T>::stack()
 {
+        MPI_Comm 	nodeComm;
+        MPI_Group 	group,
+			nodeGroup;
+
         //synchronize
 	BCL::barrier();
+
+	MPI_Comm_split_type(BCL::comm, MPI_COMM_TYPE_SHARED, BCL::rank(), BCL::info, &nodeComm);
+	MPI_Comm_size(nodeComm, &nodeSize);
+	table = new int [nodeSize];
+	int temp[nodeSize];
+	for (int i = 0; i < nodeSize; ++i)
+		temp[i] = i;
+	MPI_Comm_group(BCL::comm, &group);
+	MPI_Comm_group(nodeComm, &nodeGroup);
+	MPI_Group_translate_ranks(nodeGroup, nodeSize, temp, group, table);
 
         location = BCL::alloc<gptr<unit_info<T>>>(1);
         BCL::store(NULL_PTR_U, location);
@@ -104,7 +122,7 @@ dds::ebs::stack<T>::stack()
         if (BCL::rank() == MASTER_UNIT)
 	{
                 BCL::store(NULL_PTR_E, top);
-                printf("*\tSTACK\t\t:\tEBS\t\t\t*\n");
+                printf("*\tSTACK\t\t:\tEBS_NA\t\t\t*\n");
 	}
 	else //if (BCL::rank() != MASTER_UNIT)
 		top.rank = MASTER_UNIT;
@@ -114,7 +132,7 @@ dds::ebs::stack<T>::stack()
 }
 
 template<typename T>
-dds::ebs::stack<T>::~stack()
+dds::ebs_na::stack<T>::~stack()
 {
 	if (BCL::rank() != MASTER_UNIT)
 		top.rank = BCL::rank();
@@ -122,10 +140,12 @@ dds::ebs::stack<T>::~stack()
         BCL::dealloc<uint32_t>(collision);
         BCL::dealloc<unit_info<T>>(p);
 	BCL::dealloc<gptr<unit_info<T>>>(location);
+
+	delete[] table;
 }
 
 template<typename T>
-void dds::ebs::stack<T>::push(const T &value)
+void dds::ebs_na::stack<T>::push(const T &value)
 {
 	unit_info<T> 	temp;
 	gptr<T>		tempAddr;
@@ -152,7 +172,7 @@ void dds::ebs::stack<T>::push(const T &value)
 }
 
 template<typename T>
-bool dds::ebs::stack<T>::pop(T *value)
+bool dds::ebs_na::stack<T>::pop(T *value)
 {
 	unit_info<T> temp;
 
@@ -183,7 +203,7 @@ bool dds::ebs::stack<T>::pop(T *value)
 }
 
 template<typename T>
-void dds::ebs::stack<T>::print()
+void dds::ebs_na::stack<T>::print()
 {
 	//synchronize
 	BCL::barrier();
@@ -206,7 +226,7 @@ void dds::ebs::stack<T>::print()
 }
 
 template<typename T>
-bool dds::ebs::stack<T>::try_perform_stack_op()
+bool dds::ebs_na::stack<T>::try_perform_stack_op()
 {
 	unit_info<T>		pVal;
 	gptr<elem<T>>		oldTopAddr;
@@ -279,23 +299,23 @@ bool dds::ebs::stack<T>::try_perform_stack_op()
 }
 
 template<typename T>
-uint32_t dds::ebs::stack<T>::get_position()
+uint32_t dds::ebs_na::stack<T>::get_position()
 {
 	uint32_t 	min, max;
 
-	if (COLL_SIZE % 2 == 0)
-		min = round((COLL_SIZE / 2 - 1) * (FACTOR_MAX - adapt.factor));
-	else //if (COLL_SIZE % 2 != 0)
-		min = round(COLL_SIZE / 2 * (FACTOR_MAX - adapt.factor));
-	max = round(COLL_SIZE / 2 * (1.0 + adapt.factor - FACTOR_MIN));
+	if (nodeSize % 2 == 0)
+		min = round((nodeSize / 2 - 1) * (FACTOR_MAX - adapt.factor));
+	else //if (nodeSize % 2 != 0)
+		min = round(nodeSize / 2 * (FACTOR_MAX - adapt.factor));
+	max = round(nodeSize / 2 * (1.0 + adapt.factor - FACTOR_MIN));
 
 	std::default_random_engine generator;
 	std::uniform_int_distribution<uint32_t> distribution(min, max);
-	return distribution(generator);	//Generate number in the range min..max
+	return table[distribution(generator)];	//Generate number in the range min..max
 }
 
 template<typename T>
-void dds::ebs::stack<T>::adapt_width(const bool &dir)
+void dds::ebs_na::stack<T>::adapt_width(const bool &dir)
 {
 	if (dir == SHRINK)
 	{
@@ -320,7 +340,7 @@ void dds::ebs::stack<T>::adapt_width(const bool &dir)
 }
 
 template<typename T>
-bool dds::ebs::stack<T>::try_collision(const gptr<unit_info<T>> &q, const uint32_t &him)
+bool dds::ebs_na::stack<T>::try_collision(const gptr<unit_info<T>> &q, const uint32_t &him)
 {
 	location.rank = him;
 	unit_info<T> pVal = BCL::load(p);
@@ -352,7 +372,7 @@ bool dds::ebs::stack<T>::try_collision(const gptr<unit_info<T>> &q, const uint32
 }
 
 template<typename T>
-void dds::ebs::stack<T>::finish_collision()
+void dds::ebs_na::stack<T>::finish_collision()
 {
 	unit_info<T> pVal = BCL::load(p);
 	if (pVal.op == POP)
@@ -365,7 +385,7 @@ void dds::ebs::stack<T>::finish_collision()
 }
 
 template<typename T>
-void dds::ebs::stack<T>::less_op()
+void dds::ebs_na::stack<T>::less_op()
 {
 	uint32_t		myUID = BCL::rank(),
 				pos,
@@ -430,10 +450,10 @@ void dds::ebs::stack<T>::less_op()
 }
 
 template<typename T>
-void dds::ebs::stack<T>::stack_op()
+void dds::ebs_na::stack<T>::stack_op()
 {
 	if (!try_perform_stack_op())
 		less_op();
 }
 
-#endif /* STACK_EB_H */
+#endif /* STACK_EB_NA_H */

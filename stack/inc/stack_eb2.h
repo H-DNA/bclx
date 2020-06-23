@@ -77,7 +77,6 @@ namespace ebs2
 		void finish_collision();
                 bool try_perform_stack_op();
                 void less_op();
-                void stack_op();
 	};
 
 } /* namespace ebs2 */
@@ -141,7 +140,11 @@ void dds::ebs2::stack<T>::push(const T &value)
 	}
 
 	tempAddr = {temp.itsElem.rank, temp.itsElem.ptr + sizeof(gptr<elem<T>>)};
-	BCL::rput_sync(value, tempAddr);
+	#ifdef MEM_REC
+		BCL::rput_sync(value, tempAddr);
+	#else
+		BCL::store(value, tempAddr);
+	#endif
 	BCL::store(temp, p);
 
 	less_op();
@@ -218,7 +221,11 @@ bool dds::ebs2::stack<T>::try_perform_stack_op()
 
 		//update new element (global memory)
         	tempAddr = {pVal.itsElem.rank, pVal.itsElem.ptr};
-		BCL::rput_sync(oldTopAddr, tempAddr);
+		#ifdef MEM_REC
+			BCL::rput_sync(oldTopAddr, tempAddr);
+		#else
+			BCL::store(oldTopAddr, tempAddr);
+		#endif
 
 		//update top (global memory)
 		if (BCL::cas_sync(top, oldTopAddr, pVal.itsElem) == oldTopAddr)
@@ -405,7 +412,7 @@ void dds::ebs2::stack<T>::less_op()
 			}
 		}
 
-		bk.delay_exp();
+		bk.delay_dbl();
 		adapt_width(SHRINK);
 
 		location.rank = myUID;
@@ -419,13 +426,6 @@ void dds::ebs2::stack<T>::less_op()
 		if (try_perform_stack_op())
 			return;
 	}
-}
-
-template<typename T>
-void dds::ebs2::stack<T>::stack_op()
-{
-	if (!try_perform_stack_op())
-		less_op();
 }
 
 #endif /* STACK_EB2_H */
