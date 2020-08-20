@@ -3,6 +3,7 @@
 
 #include <random>
 #include "../../lib/backoff.h"
+#include "../../lib/ta.h"
 
 namespace dds
 {
@@ -71,8 +72,7 @@ namespace ebs2_na
 		gptr<uint32_t>			collision;	//contains the rank of the unit trying to collide
                 adapt_params			adapt;          //contains the adaptative elimination backoff
 
-                int                             nodeSize;
-                int                             *table;
+		ta::na                          na;             //contains node information
 
 		uint32_t get_position();
 		void adapt_width(const bool &);
@@ -89,22 +89,8 @@ namespace ebs2_na
 template<typename T>
 dds::ebs2_na::stack<T>::stack()
 {
-	MPI_Comm	nodeComm;
-        MPI_Group       group,
-                        nodeGroup;
-
         //synchronize
 	BCL::barrier();
-
-        MPI_Comm_split_type(BCL::comm, MPI_COMM_TYPE_SHARED, BCL::rank(), BCL::info, &nodeComm);
-        MPI_Comm_size(nodeComm, &nodeSize);
-        table = new int [nodeSize];
-        int temp[nodeSize];
-        for (int i = 0; i < nodeSize; ++i)
-                temp[i] = i;
-        MPI_Comm_group(BCL::comm, &group);
-        MPI_Comm_group(nodeComm, &nodeGroup);
-        MPI_Group_translate_ranks(nodeGroup, nodeSize, temp, group, table);
 
         location = BCL::alloc<gptr<unit_info<T>>>(1);
         BCL::store(NULL_PTR_U, location);
@@ -138,8 +124,6 @@ dds::ebs2_na::stack<T>::~stack()
         BCL::dealloc<uint32_t>(collision);
         BCL::dealloc<unit_info<T>>(p);
 	BCL::dealloc<gptr<unit_info<T>>>(location);
-
-        delete[] table;
 }
 
 template<typename T>
@@ -301,15 +285,15 @@ uint32_t dds::ebs2_na::stack<T>::get_position()
 {
 	uint32_t 	min, max;
 
-	if (nodeSize % 2 == 0)
-		min = round((nodeSize / 2 - 1) * (FACTOR_MAX - adapt.factor));
-	else //if (nodeSize % 2 != 0)
-		min = round(nodeSize / 2 * (FACTOR_MAX - adapt.factor));
-	max = round(nodeSize / 2 * (1.0 + adapt.factor - FACTOR_MIN));
+	if (na.size % 2 == 0)
+		min = round((na.size / 2 - 1) * (FACTOR_MAX - adapt.factor));
+	else //if (na.size % 2 != 0)
+		min = round(na.size / 2 * (FACTOR_MAX - adapt.factor));
+	max = round(na.size / 2 * (1.0 + adapt.factor - FACTOR_MIN));
 
 	std::default_random_engine generator;
 	std::uniform_int_distribution<uint32_t> distribution(min, max);
-	return table[distribution(generator)];	//Generate number in the range min..max
+	return na.table[distribution(generator)];	//Generate number in the range min..max
 }
 
 template<typename T>

@@ -3,7 +3,7 @@
 #include "../inc/stack.h"
 
 using namespace dds;
-using namespace dds::ts;
+using namespace dds::ebs2_na;
 
 int main()
 {
