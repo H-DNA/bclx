@@ -1,8 +1,6 @@
 #ifndef TA_H
 #define TA_H
 
-#include <mpi.h>
-
 namespace ta
 {
 
@@ -14,6 +12,7 @@ namespace ta
 
 		na();
 		~na();
+		void print();
 	};
 
 	class sa
@@ -33,7 +32,7 @@ ta::na::na()
 	MPI_Comm_split_type(BCL::comm, MPI_COMM_TYPE_SHARED, BCL::rank(), BCL::info, &nodeComm);
 	MPI_Comm_size(nodeComm, &size);
 	table = new int [size];
-	temp = new int[size];
+	temp = new int [size];
 	for (int i = 0; i < size; ++i)
                 temp[i] = i;
 	MPI_Comm_group(BCL::comm, &group);
@@ -45,6 +44,12 @@ ta::na::na()
 ta::na::~na()
 {
 	delete[] table;
+}
+
+void ta::na::print()
+{
+	for (int i = 0; i < size; ++i)
+		printf("[%lu]table[%d] = %d\n", BCL::rank(), i, table[i]);
 }
 
 #endif /* TA_H */

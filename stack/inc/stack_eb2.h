@@ -283,10 +283,10 @@ uint32_t dds::ebs2::stack<T>::get_position()
 	uint32_t 	min, max;
 
 	if (COLL_SIZE % 2 == 0)
-		min = round((COLL_SIZE / 2 - 1) * (FACTOR_MAX - adapt.factor));
+		min = round((COLL_SIZE / 2 - 1) * (FACTOR_MAX - FACTOR_MIN - adapt.factor));
 	else //if (COLL_SIZE % 2 != 0)
-		min = round(COLL_SIZE / 2 * (FACTOR_MAX - adapt.factor));
-	max = round(COLL_SIZE / 2 * (1.0 + adapt.factor - FACTOR_MIN));
+		min = round(COLL_SIZE / 2 * (FACTOR_MAX - FACTOR_MIN - adapt.factor));
+	max = round(COLL_SIZE / 2 * (FACTOR_MAX - FACTOR_MIN + adapt.factor));
 
 	std::default_random_engine generator;
 	std::uniform_int_distribution<uint32_t> distribution(min, max);
