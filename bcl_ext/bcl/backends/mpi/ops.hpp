@@ -126,6 +126,9 @@ namespace BCL {
 	struct sum;
 
 	template <>
+	struct sum<uint64_t> : public abstract_sum<uint64_t>, public abstract_uint64_t, public atomic_op<uint64_t> {};
+
+	template <>
 	struct sum<double> : public abstract_sum<double>, public abstract_double, public atomic_op<double> {};
 
 	template <typename T>

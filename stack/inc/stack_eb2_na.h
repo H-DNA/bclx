@@ -232,7 +232,13 @@ bool dds::ebs2_na::stack<T>::try_perform_stack_op()
 
 		//update top (global memory)
 		if (BCL::cas_sync(top, oldTopAddr, pVal.itsElem) == oldTopAddr)
+		{
+			#ifdef	TUNING
+				++count;
+			#endif
+
 			return true;
+		}
 		return false;
 	}
 	if (pVal.op == POP)
@@ -250,6 +256,11 @@ bool dds::ebs2_na::stack<T>::try_perform_stack_op()
 			if (oldTopAddr == nullptr)
 			{
 				BCL::store(NULL_PTR_E, tempAddr);
+
+				#ifdef	TUNING
+					++count;
+				#endif
+
 				return true;
 			}
 
@@ -267,6 +278,11 @@ bool dds::ebs2_na::stack<T>::try_perform_stack_op()
 		if (BCL::cas_sync(top, oldTopAddr, newTopVal.next) == oldTopAddr)
 		{
 			BCL::store(oldTopAddr, tempAddr);
+
+			#ifdef	TUNING
+				++count;
+			#endif
+
 			res = true;
 		}
 		else

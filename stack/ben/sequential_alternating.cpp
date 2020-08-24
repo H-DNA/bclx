@@ -63,6 +63,13 @@ int main()
                 printf("*********************************************************\n");
 	}
 
+        //tuning
+        #ifdef  TUNING
+                uint64_t total_count = BCL::reduce(count, MASTER_UNIT, BCL::sum<uint64_t>{});
+                if (BCL::rank() == MASTER_UNIT)
+                        printf("The access rate on the elimination array = %f percent\n", (1 - (double) total_count / ELEM_PER_UNIT) * 100);
+        #endif
+
 	BCL::finalize();
 
 	return 0;
