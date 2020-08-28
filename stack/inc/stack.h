@@ -21,6 +21,10 @@
 
 #include "stack_eb2_na.h"		//Node-Aware Elimination-Backoff Stack 2
 
+#include "stack_eb3_na.h"
+
+#include "stack_eb4_na.h"
+
 #include "stack_ts_stutter.h"		//Time-Stamped Stack using TS-interval&stutter
 
 #include "stack_ts_atomic.h"		//Time-Stamped Stack using TS-interval&atomic

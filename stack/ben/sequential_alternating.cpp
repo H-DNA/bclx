@@ -1,9 +1,10 @@
 #include <ctime>
 #include <bcl/bcl.hpp>
 #include "../inc/stack.h"
+#include "../../lib/ta.h"
 
 using namespace dds;
-using namespace dds::ebs2_na;
+using namespace dds::ebs3_na;
 
 int main()
 {
@@ -65,9 +66,13 @@ int main()
 
         //tuning
         #ifdef  TUNING
-                uint64_t total_count = BCL::reduce(count, MASTER_UNIT, BCL::sum<uint64_t>{});
-                if (BCL::rank() == MASTER_UNIT)
-                        printf("The access rate on the elimination array = %f percent\n", (1 - (double) total_count / ELEM_PER_UNIT) * 100);
+		uint64_t	total_count;
+        	ta::na          na;
+
+		MPI_Reduce(&count, &total_count, 1, MPI_UINT64_T, MPI_SUM, MASTER_UNIT, na.nodeComm);
+                if (na.rank == MASTER_UNIT)
+                        printf("[Node %d]The access rate on the elimination array = %f percent\n",
+					na.node_id, (1 - (double) total_count / num_ops / na.size) * 100);
         #endif
 
 	BCL::finalize();

@@ -7,7 +7,7 @@ namespace dds
 {
 
 	/* Configurations */
-	//#define	TUNING
+	#define	TUNING
 	//#define	DEBUGGING
 	//#define	MEM_REC
 	const uint64_t	ELEM_PER_UNIT	=	exp2l(15);

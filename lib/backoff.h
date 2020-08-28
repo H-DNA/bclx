@@ -12,45 +12,48 @@ namespace backoff
         class backoff
         {
         public:
-                backoff();
+                backoff(const uint64_t &th);
                 void delay_exp();
-		void delay_dbl();
+		uint64_t delay_dbl();
 		void delay_inc();
 
         private:
-		const uint64_t	BK_TH = dds::BK_TH;
-                uint64_t        c;
+		uint64_t	c;
+		uint64_t	bk_th;
 	};
 
 } /* namespace backoff */
 
-backoff::backoff::backoff()
+backoff::backoff::backoff(const uint64_t &th)
 {
         c = 0;
+	bk_th = th;
 }
 
 void backoff::backoff::delay_exp()
 {
 	++c;
-	if (exp2l(c) > BK_TH)
+	if (exp2l(c) > bk_th)
 		c = 1;
         std::default_random_engine generator;
         std::uniform_int_distribution<uint64_t> distribution(0, exp2l(c) - 1);
         usleep(distribution(generator));
 }
 
-void backoff::backoff::delay_dbl()
+uint64_t backoff::backoff::delay_dbl()
 {
         usleep(exp2l(c));
 	++c;
-	if (exp2l(c) > BK_TH)
+	if (exp2l(c) > bk_th)
 		c = 0;
+
+	return (uint64_t) exp2l(c);
 }
 
 void backoff::backoff::delay_inc()
 {
 	++c;
-	if (c > BK_TH)
+	if (c > bk_th)
 		c = 1;
 	usleep(c);
 }

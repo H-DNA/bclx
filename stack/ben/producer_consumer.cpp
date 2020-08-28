@@ -2,9 +2,10 @@
 #include <ctime>
 #include <bcl/bcl.hpp>
 #include "../inc/stack.h"
+#include "../../lib/ta.h"
 
 using namespace dds;
-using namespace dds::ebs2_na;
+using namespace dds::ebs3_na;
 
 int main()
 {
@@ -93,6 +94,18 @@ int main()
 		printf("*\tTHROUGHPUT\t:\t%f (ops/s)\t*\n", ELEM_PER_UNIT / total_time);
                 printf("*********************************************************\n");
 	}
+
+	//tuning
+	#ifdef  TUNING
+		uint64_t        total_count;
+		ta::na          na;
+
+		count -= num_ops / 2;
+		MPI_Reduce(&count, &total_count, 1, MPI_UINT64_T, MPI_SUM, MASTER_UNIT, na.nodeComm);
+		if (na.rank == MASTER_UNIT)
+			printf("[Node %d]The access rate on the elimination array = %f percent\n",
+					na.node_id, (1 - (double) total_count / num_ops / na.size) * 100);
+	#endif
 
 	//BCL::barrier();
 	//printf("[%lu]cpu_time_used = %f, failure = %u\n", BCL::rank(), cpu_time_used, failure);

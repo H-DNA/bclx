@@ -1,5 +1,5 @@
-#ifndef STACK_EB_NA_H
-#define STACK_EB_NA_H
+#ifndef STACK_EB3_NA_H
+#define STACK_EB3_NA_H
 
 #include <random>
 #include "../../lib/backoff.h"
@@ -8,7 +8,7 @@
 namespace dds
 {
 
-namespace ebs_na
+namespace ebs3_na
 {
 
 	/* Macros */
@@ -83,12 +83,12 @@ namespace ebs_na
                 void stack_op();
 	};
 
-} /* namespace ebs_na */
+} /* namespace ebs3_na */
 
 } /* namespace dds */
 
 template<typename T>
-dds::ebs_na::stack<T>::stack()
+dds::ebs3_na::stack<T>::stack()
 {
         //synchronize
 	BCL::barrier();
@@ -107,7 +107,7 @@ dds::ebs_na::stack<T>::stack()
         if (BCL::rank() == MASTER_UNIT)
 	{
                 BCL::store(NULL_PTR_E, top);
-                printf("*\tSTACK\t\t:\tEBS_NA\t\t\t*\n");
+                printf("*\tSTACK\t\t:\tEBS3_NA\t\t\t*\n");
 	}
 	else //if (BCL::rank() != MASTER_UNIT)
 		top.rank = MASTER_UNIT;
@@ -117,7 +117,7 @@ dds::ebs_na::stack<T>::stack()
 }
 
 template<typename T>
-dds::ebs_na::stack<T>::~stack()
+dds::ebs3_na::stack<T>::~stack()
 {
 	if (BCL::rank() != MASTER_UNIT)
 		top.rank = BCL::rank();
@@ -128,7 +128,7 @@ dds::ebs_na::stack<T>::~stack()
 }
 
 template<typename T>
-void dds::ebs_na::stack<T>::push(const T &value)
+void dds::ebs3_na::stack<T>::push(const T &value)
 {
 	unit_info<T> 	temp;
 	gptr<T>		tempAddr;
@@ -151,11 +151,16 @@ void dds::ebs_na::stack<T>::push(const T &value)
 	#endif
 	BCL::store(temp, p);
 
-	stack_op();
+        backoff::backoff        bk(exp2l(10));
+	if (na.node_id == na.node_id_master)
+		while (!try_perform_stack_op())
+			bk.delay_dbl();
+	else //if (na.node_id != na.node_id_master)
+		stack_op();
 }
 
 template<typename T>
-bool dds::ebs_na::stack<T>::pop(T *value)
+bool dds::ebs3_na::stack<T>::pop(T *value)
 {
 	unit_info<T> temp;
 
@@ -163,7 +168,12 @@ bool dds::ebs_na::stack<T>::pop(T *value)
 	temp.op = POP;
 	BCL::store(temp, p);
 
-	stack_op();
+        backoff::backoff        bk(exp2l(10));
+        if (na.node_id == na.node_id_master)
+                while (!try_perform_stack_op())
+                        bk.delay_dbl();
+        else //if (na.node_id != na.node_id_master)
+                stack_op();
 
 	gptr<gptr<elem<T>>> tempAddr = {p.rank, p.ptr};
 	gptr<elem<T>> tempAddr2 = BCL::load(tempAddr);
@@ -186,7 +196,7 @@ bool dds::ebs_na::stack<T>::pop(T *value)
 }
 
 template<typename T>
-void dds::ebs_na::stack<T>::print()
+void dds::ebs3_na::stack<T>::print()
 {
 	//synchronize
 	BCL::barrier();
@@ -209,7 +219,7 @@ void dds::ebs_na::stack<T>::print()
 }
 
 template<typename T>
-bool dds::ebs_na::stack<T>::try_perform_stack_op()
+bool dds::ebs3_na::stack<T>::try_perform_stack_op()
 {
 	unit_info<T>		pVal;
 	gptr<elem<T>>		oldTopAddr;
@@ -298,7 +308,7 @@ bool dds::ebs_na::stack<T>::try_perform_stack_op()
 }
 
 template<typename T>
-uint32_t dds::ebs_na::stack<T>::get_position()
+uint32_t dds::ebs3_na::stack<T>::get_position()
 {
 	uint32_t 	min, max;
 
@@ -314,7 +324,7 @@ uint32_t dds::ebs_na::stack<T>::get_position()
 }
 
 template<typename T>
-void dds::ebs_na::stack<T>::adapt_width(const bool &dir)
+void dds::ebs3_na::stack<T>::adapt_width(const bool &dir)
 {
 	if (dir == SHRINK)
 	{
@@ -339,7 +349,7 @@ void dds::ebs_na::stack<T>::adapt_width(const bool &dir)
 }
 
 template<typename T>
-bool dds::ebs_na::stack<T>::try_collision(const gptr<unit_info<T>> &q, const uint32_t &him)
+bool dds::ebs3_na::stack<T>::try_collision(const gptr<unit_info<T>> &q, const uint32_t &him)
 {
 	location.rank = him;
 	unit_info<T> pVal = BCL::load(p);
@@ -371,7 +381,7 @@ bool dds::ebs_na::stack<T>::try_collision(const gptr<unit_info<T>> &q, const uin
 }
 
 template<typename T>
-void dds::ebs_na::stack<T>::finish_collision()
+void dds::ebs3_na::stack<T>::finish_collision()
 {
 	unit_info<T> pVal = BCL::load(p);
 	if (pVal.op == POP)
@@ -384,7 +394,7 @@ void dds::ebs_na::stack<T>::finish_collision()
 }
 
 template<typename T>
-void dds::ebs_na::stack<T>::less_op()
+void dds::ebs3_na::stack<T>::less_op()
 {
 	uint32_t		myUID = BCL::rank(),
 				pos,
@@ -392,7 +402,7 @@ void dds::ebs_na::stack<T>::less_op()
 	unit_info<T>		pVal,
 				qVal;
 	gptr<unit_info<T>>	q;
-	backoff::backoff	bk;
+	backoff::backoff	bk(BK_TH);
 
 	while (true)
 	{
@@ -449,10 +459,10 @@ void dds::ebs_na::stack<T>::less_op()
 }
 
 template<typename T>
-void dds::ebs_na::stack<T>::stack_op()
+void dds::ebs3_na::stack<T>::stack_op()
 {
 	if (!try_perform_stack_op())
 		less_op();
 }
 
-#endif /* STACK_EB_NA_H */
+#endif /* STACK_EB3_NA_H */
