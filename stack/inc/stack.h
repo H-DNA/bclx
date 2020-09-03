@@ -11,8 +11,6 @@
 
 #include "stack_treiber.h"		//Treiber Stack
 
-#include "stack_treiber2.h"		//Treiber Stack 2
-
 #include "stack_eb.h"			//Elimination-Backoff Stack
 
 #include "stack_eb2.h"			//Elimination-Backoff Stack 2
@@ -20,10 +18,6 @@
 #include "stack_eb_na.h"		//Node-Aware Elimination-Backoff Stack
 
 #include "stack_eb2_na.h"		//Node-Aware Elimination-Backoff Stack 2
-
-#include "stack_eb3_na.h"
-
-#include "stack_eb4_na.h"
 
 #include "stack_ts_stutter.h"		//Time-Stamped Stack using TS-interval&stutter
 

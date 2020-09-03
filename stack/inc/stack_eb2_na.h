@@ -44,11 +44,12 @@ namespace ebs2_na
 	class stack
 	{
 	public:
-		stack();		//collective
-		~stack();		//collective
-		void push(const T &);	//non-collective
-		bool pop(T *);		//non-collective
-		void print();		//collective
+		stack();			//collective
+		~stack();			//collective
+		bool push(const T &value);	//non-collective
+		bool pop(T &value);		//non-collective
+		void print();			//collective
+		bool push_fill(const T &value); //non-collective
 
 	private:
        		const gptr<elem<T>> 		NULL_PTR_E = 	nullptr;
@@ -127,7 +128,7 @@ dds::ebs2_na::stack<T>::~stack()
 }
 
 template<typename T>
-void dds::ebs2_na::stack<T>::push(const T &value)
+bool dds::ebs2_na::stack<T>::push(const T &value)
 {
 	unit_info<T> 	temp;
 	gptr<T>		tempAddr;
@@ -139,7 +140,8 @@ void dds::ebs2_na::stack<T>::push(const T &value)
 	if (temp.itsElem == nullptr)
 	{
                 printf("[%lu]ERROR: The stack is full now. The push is ineffective.\n", BCL::rank());
-		return;
+
+		return false;
 	}
 
 	tempAddr = {temp.itsElem.rank, temp.itsElem.ptr + sizeof(gptr<elem<T>>)};
@@ -151,10 +153,12 @@ void dds::ebs2_na::stack<T>::push(const T &value)
 	BCL::store(temp, p);
 
 	less_op();
+
+	return true;
 }
 
 template<typename T>
-bool dds::ebs2_na::stack<T>::pop(T *value)
+bool dds::ebs2_na::stack<T>::pop(T &value)
 {
 	unit_info<T> temp;
 
@@ -168,19 +172,16 @@ bool dds::ebs2_na::stack<T>::pop(T *value)
 	gptr<elem<T>> tempAddr2 = BCL::load(tempAddr);
 
 	if (tempAddr2 == nullptr)
-	{
-		value = nullptr;
-		return EMPTY;
-	}
+		return false;
 	else
 	{
 		gptr<T>	tempAddr3 = {tempAddr2.rank, tempAddr2.ptr + sizeof(gptr<elem<T>>)};
-		*value = BCL::rget_sync(tempAddr3);
+		value = BCL::rget_sync(tempAddr3);
 
                 //deallocate global memory of the popped elem
                 mem.free(tempAddr2);
 
-		return NON_EMPTY;
+		return true;
 	}
 }
 
@@ -208,6 +209,39 @@ void dds::ebs2_na::stack<T>::print()
 }
 
 template<typename T>
+bool dds::ebs2_na::stack<T>::push_fill(const T &value)
+{
+        if (BCL::rank() == MASTER_UNIT)
+        {
+                unit_info<T>    temp;
+                gptr<T>         tempAddr;
+                gptr<elem<T>>   oldTopAddr;
+
+                temp.rank = BCL::rank();
+                temp.op = PUSH;
+                //allocate global memory to the new elem
+                temp.itsElem = mem.malloc();
+                if (temp.itsElem == nullptr)
+                {
+                        printf("[%lu]ERROR: The stack is full now. The push is ineffective.\n", BCL::rank());
+                        return false;
+                }
+
+                //get top (from global memory to local memory)
+                oldTopAddr = BCL::load(top);
+
+                //update new element (global memory)
+                BCL::store({oldTopAddr, value}, temp.itsElem);
+                BCL::store(temp, p);
+
+                //update top (global memory)
+                BCL::store(temp.itsElem, top);
+
+                return true;
+        }
+}
+
+template<typename T>
 bool dds::ebs2_na::stack<T>::try_perform_stack_op()
 {
 	unit_info<T>		pVal;
@@ -232,13 +266,7 @@ bool dds::ebs2_na::stack<T>::try_perform_stack_op()
 
 		//update top (global memory)
 		if (BCL::cas_sync(top, oldTopAddr, pVal.itsElem) == oldTopAddr)
-		{
-			#ifdef	TUNING
-				++count;
-			#endif
-
 			return true;
-		}
 		return false;
 	}
 	if (pVal.op == POP)
@@ -257,10 +285,6 @@ bool dds::ebs2_na::stack<T>::try_perform_stack_op()
 			{
 				BCL::store(NULL_PTR_E, tempAddr);
 
-				#ifdef	TUNING
-					++count;
-				#endif
-
 				return true;
 			}
 
@@ -278,10 +302,6 @@ bool dds::ebs2_na::stack<T>::try_perform_stack_op()
 		if (BCL::cas_sync(top, oldTopAddr, newTopVal.next) == oldTopAddr)
 		{
 			BCL::store(oldTopAddr, tempAddr);
-
-			#ifdef	TUNING
-				++count;
-			#endif
 
 			res = true;
 		}
@@ -391,7 +411,7 @@ void dds::ebs2_na::stack<T>::less_op()
 	unit_info<T>		pVal,
 				qVal;
 	gptr<unit_info<T>>	q;
-	backoff::backoff	bk;
+	backoff::backoff	bk(BK_INIT, BK_MAX);
 
 	while (true)
 	{
@@ -418,13 +438,26 @@ void dds::ebs2_na::stack<T>::less_op()
 					if (BCL::cas_sync(location, p, NULL_PTR_U) == p)
 					{
 						if (try_collision(q, him))
+						{
+							//tracing
+							#ifdef	TRACING
+								++succ_ea;
+							#endif
+
 							return;
+						}
 						else
 							goto label;
 					}
 					else
 					{
 						finish_collision();
+
+						//tracing
+						#ifdef	TRACING
+							++succ_ea;
+						#endif
+
 						return;
 					}
 				}
@@ -438,12 +471,37 @@ void dds::ebs2_na::stack<T>::less_op()
 		if (BCL::cas_sync(location, p, NULL_PTR_U) != p)
 		{
 			finish_collision();
+
+			//tracing
+			#ifdef	TRACING
+				++succ_ea;
+			#endif
+
 			return;
 		}
 
 	label:
+		//tracing
+		#ifdef	TRACING
+			++fail_ea;
+		#endif
+
 		if (try_perform_stack_op())
+		{
+			//tracing
+			#ifdef	TRACING
+				++succ_cs;
+			#endif
+
 			return;
+		}
+		else //if (!try_perform_stack_op())
+		{
+			//tracing
+			#ifdef	TRACING
+				++fail_cs;
+			#endif
+		}
 	}
 }
 

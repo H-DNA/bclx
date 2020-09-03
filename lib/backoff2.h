@@ -1,59 +1,76 @@
-#ifndef BACKOFF_H
-#define BACKOFF_H
+#ifndef BACKOFF2_H
+#define BACKOFF2_H
 
-#include <thread>
-#include <chrono>
+#include <unistd.h>
 #include <random>
 #include <cmath>
 #include "../config.h"
 
-namespace backoff
+namespace backoff2
 {
 
         class backoff
         {
         public:
-                backoff();
+                backoff(const uint64_t &init, const uint64_t &max);
                 void delay_exp();
 		void delay_dbl();
 		void delay_inc();
 
         private:
-		const uint64_t	BK_TH = dds::BK_TH;
-                uint64_t        c;
+		uint64_t	bk;
+		uint64_t	bk_init;
+		uint64_t	bk_max;
 	};
 
 } /* namespace backoff */
 
-backoff::backoff::backoff()
+backoff2::backoff::backoff(const uint64_t &init, const uint64_t &max)
 {
-        c = 0;
+        bk = bk_init = init;
+	bk_max = max;
 }
 
-void backoff::backoff::delay_exp()
+void backoff2::backoff::delay_exp()
 {
-	++c;
-	if (exp2l(c) > BK_TH)
-		c = 1;
+	if (bk > bk_max)
+		bk = bk_max;
+
         std::default_random_engine generator;
-        std::uniform_int_distribution<uint64_t> distribution(0, exp2l(c) - 1);
-        std::this_thread::sleep_for(std::chrono::microseconds(distribution(generator)));
+        std::uniform_int_distribution<uint64_t> distribution(0, bk);
+        usleep(distribution(generator));
+
+	if (2 * bk <= bk_max)
+		bk *= 2;
+	else //if (2 * bk > bk_max)
+		bk = bk_init;
+
 }
 
-void backoff::backoff::delay_dbl()
+void backoff2::backoff::delay_dbl()
 {
-        std::this_thread::sleep_for(std::chrono::microseconds((uint64_t) exp2l(c)));
-	++c;
-	if (exp2l(c) > BK_TH)
-		c = 0;
+	if (bk > bk_max)
+		bk = bk_max;
+
+        usleep(bk);
+
+	if (2 * bk <= bk_max)
+		bk *= 2;
+	else //if (2 * bk > bk_max)
+		bk = bk_init;
 }
 
-void backoff::backoff::delay_inc()
+void backoff2::backoff::delay_inc()
 {
-	++c;
-	if (c > BK_TH)
-		c = 1;
-        std::this_thread::sleep_for(std::chrono::microseconds(c));
+	if (bk > bk_max)
+		bk = bk_max;
+
+	usleep(bk);
+
+	if (1 + bk <= bk_max)
+		++bk;
+	else //if (1 + bk > bk_max)
+		bk = bk_init;
 }
 
-#endif /* BACKOFF_H */
+#endif /* BACKOFF2_H */

@@ -4,13 +4,12 @@
 #include "../../lib/ta.h"
 
 using namespace dds;
-using namespace dds::ebs3_na;
+using namespace dds::ts;
 
 int main()
 {
         uint32_t	i,
 			value;
-        bool 		state;
         clock_t		start,
 			end;
         double 		cpu_time_used,
@@ -48,7 +47,7 @@ int main()
 		usleep(WORKLOAD);
 
 		start = clock();
-                state = myStack.pop(&value);
+                myStack.pop(value);
 		end += (clock() - start);
 		usleep(WORKLOAD);
 	}
@@ -64,15 +63,23 @@ int main()
                 printf("*********************************************************\n");
 	}
 
-        //tuning
-        #ifdef  TUNING
-		uint64_t	total_count;
+        //tracing
+        #ifdef  TRACING
+		uint64_t	total_succ_cs,
+				total_fail_cs,
+				total_succ_ea,
+				total_fail_ea;
+		double		node_time;
         	ta::na          na;
 
-		MPI_Reduce(&count, &total_count, 1, MPI_UINT64_T, MPI_SUM, MASTER_UNIT, na.nodeComm);
+		MPI_Reduce(&succ_cs, &total_succ_cs, 1, MPI_UINT64_T, MPI_SUM, MASTER_UNIT, na.nodeComm);
+		MPI_Reduce(&fail_cs, &total_fail_cs, 1, MPI_UINT64_T, MPI_SUM, MASTER_UNIT, na.nodeComm);
+		MPI_Reduce(&succ_ea, &total_succ_ea, 1, MPI_UINT64_T, MPI_SUM, MASTER_UNIT, na.nodeComm);
+		MPI_Reduce(&fail_ea, &total_fail_ea, 1, MPI_UINT64_T, MPI_SUM, MASTER_UNIT, na.nodeComm);
+		MPI_Reduce(&cpu_time_used, &node_time, 1, MPI_DOUBLE, MPI_MAX, MASTER_UNIT, na.nodeComm);
                 if (na.rank == MASTER_UNIT)
-                        printf("[Node %d]The access rate on the elimination array = %f percent\n",
-					na.node_id, (1 - (double) total_count / num_ops / na.size) * 100);
+                        printf("[Node %d]Execution time = %f seconds, %lu, %lu, %lu, %lu\n", na.node_id,
+					node_time, total_succ_cs, total_fail_cs, total_succ_ea, total_fail_ea);
         #endif
 
 	BCL::finalize();

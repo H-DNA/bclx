@@ -1,7 +1,8 @@
 #ifndef BACKOFF_H
 #define BACKOFF_H
 
-#include <unistd.h>
+#include <thread>
+#include <chrono>
 #include <random>
 #include <cmath>
 #include "../config.h"
@@ -12,50 +13,58 @@ namespace backoff
         class backoff
         {
         public:
-                backoff(const uint64_t &th);
+                backoff(const uint64_t &init, const uint64_t &max);
                 void delay_exp();
-		uint64_t delay_dbl();
+		void delay_dbl();
 		void delay_inc();
 
         private:
-		uint64_t	c;
-		uint64_t	bk_th;
+		uint64_t	bk;
+		uint64_t	bk_max;
 	};
 
 } /* namespace backoff */
 
-backoff::backoff::backoff(const uint64_t &th)
+backoff::backoff::backoff(const uint64_t &init, const uint64_t &max)
 {
-        c = 0;
-	bk_th = th;
+        bk = init;
+	bk_max = max;
 }
 
 void backoff::backoff::delay_exp()
 {
-	++c;
-	if (exp2l(c) > bk_th)
-		c = 1;
+	if (bk > bk_max)
+		bk = bk_max;
+
         std::default_random_engine generator;
-        std::uniform_int_distribution<uint64_t> distribution(0, exp2l(c) - 1);
-        usleep(distribution(generator));
+        std::uniform_int_distribution<uint64_t> distribution(0, bk);
+        std::this_thread::sleep_for(std::chrono::microseconds(distribution(generator)));
+
+	if (2 * bk <= bk_max)
+		bk *= 2;
 }
 
-uint64_t backoff::backoff::delay_dbl()
+void backoff::backoff::delay_dbl()
 {
-        usleep(exp2l(c));
-	++c;
-	if (exp2l(c) > bk_th)
-		c = 0;
+	if (bk > bk_max)
+		bk = bk_max;
 
-	return (uint64_t) exp2l(c);
+        std::this_thread::sleep_for(std::chrono::microseconds((uint64_t) bk));
+	
+	if (2 * bk <= bk_max)
+		bk *= 2;
 }
 
 void backoff::backoff::delay_inc()
 {
-	++c;
-	if (c > bk_th)
-		c = 1;
-	usleep(c);
+	if (bk > bk_max)
+		bk = bk_max;
+
+        std::this_thread::sleep_for(std::chrono::microseconds(bk));
+
+	if (1 + bk <= bk_max)
+		++bk;
+
 }
 
 #endif /* BACKOFF_H */

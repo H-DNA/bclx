@@ -29,11 +29,12 @@ namespace ts
 	class stack
 	{
 	public:
-		stack();		//collective
-		~stack();		//collective
-		void push(const T &);	//non-collective
-		bool pop(T *);		//non-collective
-		void print();		//collective
+		stack();			//collective
+		~stack();			//collective
+		bool push(const T &value);	//non-collective
+		bool pop(T &value);		//non-collective
+		void print();			//collective
+                bool push_fill(const T &value);	//non-collective
 
 	private:
         	const gptr<elem<T>> 	NULL_PTR = nullptr; 	//is a null constant
@@ -74,16 +75,23 @@ dds::ts::stack<T>::~stack()
 }
 
 template<typename T>
-void dds::ts::stack<T>::push(const T &value)
+bool dds::ts::stack<T>::push(const T &value)
 {
         gptr<elem<T>> 		oldTopAddr,
 				newTopAddr;
-	backoff::backoff	bk;		
+	backoff::backoff        bk(BK_INIT, BK_MAX);
 
 	//allocate global memory to the new elem
 	newTopAddr = mem.malloc();
 	if (newTopAddr == nullptr)
-		return;
+	{
+		//tracing
+		#ifdef	TRACING
+			++fail_cs;
+		#endif
+
+		return false;
+	}
 
 	while (true)
 	{
@@ -99,12 +107,19 @@ void dds::ts::stack<T>::push(const T &value)
 
 		//update top (global memory)
 		if (BCL::cas_sync(top, oldTopAddr, newTopAddr) == oldTopAddr)
-			return;
+		{
+			//tracing
+			#ifdef	TRACING
+				++succ_cs;
+			#endif
+
+			return true;
+		}
 		else //if (BCL::cas_sync(top, oldTopAddr, newTopAddr) != oldTopAddr)
 		{
-			//debugging
-			#ifdef DEBUGGING
-				++failure;
+			//tracing
+			#ifdef	TRACING
+				++fail_cs;
 			#endif
 
 			bk.delay_exp();
@@ -113,12 +128,12 @@ void dds::ts::stack<T>::push(const T &value)
 }
 
 template<typename T>
-bool dds::ts::stack<T>::pop(T *value)
+bool dds::ts::stack<T>::pop(T &value)
 {
 	elem<T> 		oldTopVal;
 	gptr<elem<T>> 		oldTopAddr,
 				oldTopAddr2;
-	backoff::backoff	bk;
+	backoff::backoff        bk(BK_INIT, BK_MAX);
 
 	while (true)
 	{
@@ -132,8 +147,12 @@ bool dds::ts::stack<T>::pop(T *value)
         			BCL::aput_sync(NULL_PTR, mem.hp);
 			#endif
 
-			value = NULL;
-			return EMPTY;
+			//tracing
+			#ifdef	TRACING
+				++succ_cs;
+			#endif
+
+			return false;
 		}
 
 		//update hazard pointers
@@ -149,12 +168,19 @@ bool dds::ts::stack<T>::pop(T *value)
 
 		//update top
 		if (BCL::cas_sync(top, oldTopAddr, oldTopVal.next) == oldTopAddr)
+		{
+			//tracing
+			#ifdef	TRACING
+				++succ_cs;
+			#endif
+
 			break;
+		}
 		else //if (BCL::cas_sync(top, oldTopAddr, oldTopVal.next) != oldTopAddr)
 		{
-			//debugging
-			#ifdef DEBUGGING
-				++failure;
+			//tracing
+			#ifdef	TRACING
+				++fail_cs;
 			#endif
 
 			bk.delay_exp();
@@ -167,12 +193,12 @@ bool dds::ts::stack<T>::pop(T *value)
 	#endif
 
 	//return the value of the popped elem
-	*value = oldTopVal.value;
+	value = oldTopVal.value;
 
 	//deallocate global memory of the popped elem
 	mem.free(oldTopAddr);
 
-	return NON_EMPTY;
+	return true;
 }
 
 template<typename T>
@@ -196,6 +222,12 @@ void dds::ts::stack<T>::print()
 
 	//synchronize
 	BCL::barrier();
+}
+
+template<typename T>
+bool dds::ts::stack<T>::push_fill(const T &value)
+{
+	return push(value);
 }
 
 #endif /* STACK_TREIBER_H */
