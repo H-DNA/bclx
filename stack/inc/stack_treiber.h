@@ -122,7 +122,7 @@ bool dds::ts::stack<T>::push(const T &value)
 				++fail_cs;
 			#endif
 
-			bk.delay_exp();
+			bk.delay_dbl();
 		}
 	}
 }
@@ -183,7 +183,7 @@ bool dds::ts::stack<T>::pop(T &value)
 				++fail_cs;
 			#endif
 
-			bk.delay_exp();
+			bk.delay_dbl();
 		}
 	}
 
