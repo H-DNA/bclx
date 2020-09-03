@@ -48,7 +48,7 @@ namespace ebs
 		bool push(const T &value);	//non-collective
 		bool pop(T &value);		//non-collective
 		void print();			//collective
-		bool push_fill(const T &value);	//non-collective
+		bool push_fill(const T &value);	//collective
 
 	private:
        		const gptr<elem<T>> 		NULL_PTR_E = 	nullptr;

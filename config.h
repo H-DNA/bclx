@@ -7,7 +7,6 @@ namespace dds
 {
 
 	/* Configurations */
-	#define	BACKOFF
 	#define	TRACING
 	//#define	DEBUGGING
 	//#define	MEM_REC

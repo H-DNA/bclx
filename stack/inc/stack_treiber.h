@@ -34,7 +34,7 @@ namespace ts
 		bool push(const T &value);	//non-collective
 		bool pop(T &value);		//non-collective
 		void print();			//collective
-                bool push_fill(const T &value);	//non-collective
+                bool push_fill(const T &value);	//collective
 
 	private:
         	const gptr<elem<T>> 	NULL_PTR = nullptr; 	//is a null constant
@@ -227,7 +227,27 @@ void dds::ts::stack<T>::print()
 template<typename T>
 bool dds::ts::stack<T>::push_fill(const T &value)
 {
-	return push(value);
+	if (BCL::rank() == MASTER_UNIT)
+	{
+		gptr<elem<T>>		oldTopAddr,
+					newTopAddr;
+
+		//allocate global memory to the new elem
+		newTopAddr = mem.malloc();
+		if (newTopAddr == nullptr)
+			return false;
+
+		//get top (from global memory to local memory)
+		oldTopAddr = BCL::load(top);
+
+		//update new element (global memory)
+		BCL::store({oldTopAddr, value}, newTopAddr);
+
+		//update top (global memory)
+		BCL::store(newTopAddr, top);
+		
+		return true;
+	}
 }
 
 #endif /* STACK_TREIBER_H */
