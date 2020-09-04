@@ -1,4 +1,3 @@
-#include <unistd.h>
 #include <ctime>
 #include <bcl/bcl.hpp>
 #include "../inc/stack.h"
@@ -11,9 +10,9 @@ int main()
 {
         uint32_t 	i,
 			value;
-        clock_t 	start,
+	clock_t		start,
 			end;
-        double 		cpu_time_used,
+        double		cpu_time_used,
 			total_time;
 
         BCL::init();
