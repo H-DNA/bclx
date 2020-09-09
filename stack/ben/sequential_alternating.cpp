@@ -75,7 +75,8 @@ int main()
 		fail_time /= CLOCKS_PER_SEC;
 
 		if (na.node_num == 1)
-			printf("[Proc %lu]Execution time = %f (s), %f (s)\n", BCL::rank(), cpu_time_used, fail_time);
+			printf("[Proc %lu]Execution time = %f (s), %f (s), %lu, %lu, %lu, %lu\n",
+					BCL::rank(), cpu_time_used, fail_time, succ_cs, fail_cs, succ_ea, fail_ea);
 
 		MPI_Reduce(&succ_cs, &total_succ_cs, 1, MPI_UINT64_T, MPI_SUM, MASTER_UNIT, na.nodeComm);
 		MPI_Reduce(&fail_cs, &total_fail_cs, 1, MPI_UINT64_T, MPI_SUM, MASTER_UNIT, na.nodeComm);
