@@ -72,12 +72,16 @@ int main()
 				total_fail_time;
         	ta::na          na;
 
+		fail_time /= CLOCKS_PER_SEC;
+
+		if (na.node_num == 1)
+			printf("[Proc %lu]Execution time = %f (s), %f (s)\n", BCL::rank(), cpu_time_used, fail_time);
+
 		MPI_Reduce(&succ_cs, &total_succ_cs, 1, MPI_UINT64_T, MPI_SUM, MASTER_UNIT, na.nodeComm);
 		MPI_Reduce(&fail_cs, &total_fail_cs, 1, MPI_UINT64_T, MPI_SUM, MASTER_UNIT, na.nodeComm);
 		MPI_Reduce(&succ_ea, &total_succ_ea, 1, MPI_UINT64_T, MPI_SUM, MASTER_UNIT, na.nodeComm);
 		MPI_Reduce(&fail_ea, &total_fail_ea, 1, MPI_UINT64_T, MPI_SUM, MASTER_UNIT, na.nodeComm);
 		MPI_Reduce(&cpu_time_used, &node_time, 1, MPI_DOUBLE, MPI_MAX, MASTER_UNIT, na.nodeComm);
-		fail_time /= CLOCKS_PER_SEC;
 		MPI_Reduce(&fail_time, &total_fail_time, 1, MPI_DOUBLE, MPI_MAX, MASTER_UNIT, na.nodeComm);
                 if (na.rank == MASTER_UNIT)
                         printf("[Node %d]Execution time = %f s, %f s, %lu, %lu, %lu, %lu\n", na.node_id,

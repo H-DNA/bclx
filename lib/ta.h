@@ -12,6 +12,7 @@ namespace ta
 		int		*table;
 		int		node_id;
 		int		node_id_master;
+		int		node_num;
 		MPI_Comm	nodeComm;
 
 		na();
@@ -52,8 +53,12 @@ ta::na::na()
 		color = MPI_UNDEFINED;
 	MPI_Comm_split(BCL::comm, color, BCL::rank(), &leaderComm);
 	if (color == 0)
+	{
 		MPI_Comm_rank(leaderComm, &node_id);
+		MPI_Comm_size(leaderComm, &node_num);
+	}
 	MPI_Bcast(&node_id, 1, MPI_INT, 0, nodeComm);
+	MPI_Bcast(&node_num, 1, MPI_INT, 0, nodeComm);
 	if (BCL::rank() == 0)
 		node_id_master = node_id;
 	MPI_Bcast(&node_id_master, 1, MPI_INT, 0, BCL::comm);
