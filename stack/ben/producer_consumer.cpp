@@ -37,7 +37,7 @@ int main()
 
 	BCL::barrier();
 
-	for (i = 0; i < num_ops / 2; ++i)
+	for (i = 0; i < num_ops; ++i)
 	{
 		//debugging
 		#ifdef DEBUGGING
