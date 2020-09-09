@@ -10,8 +10,7 @@ int main()
 {
         uint32_t	i,
 			value;
-        clock_t		start,
-			end;
+        clock_t		start;
         double 		cpu_time_used,
 			total_time;
 
@@ -32,7 +31,7 @@ int main()
 
 	BCL::barrier();
 
-        end = 0;
+        cpu_time_used = 0;
 	for (i = 0; i < num_ops / 2; ++i)
 	{
 		//debugging
@@ -43,18 +42,18 @@ int main()
 		value = i;
 		start = clock();
 		myStack.push(value);
-		end += (clock() - start);
+		cpu_time_used += (clock() - start);
 		usleep(WORKLOAD);
 
 		start = clock();
                 myStack.pop(value);
-		end += (clock() - start);
+		cpu_time_used += (clock() - start);
 		usleep(WORKLOAD);
 	}
 
 	BCL::barrier();
 
-        cpu_time_used = ((double) end) / CLOCKS_PER_SEC;
+        cpu_time_used /= CLOCKS_PER_SEC;
         total_time = BCL::reduce(cpu_time_used, MASTER_UNIT, BCL::max<double>{});
         if (BCL::rank() == MASTER_UNIT)
 	{
@@ -69,7 +68,8 @@ int main()
 				total_fail_cs,
 				total_succ_ea,
 				total_fail_ea;
-		double		node_time;
+		double		node_time,
+				total_fail_time;
         	ta::na          na;
 
 		MPI_Reduce(&succ_cs, &total_succ_cs, 1, MPI_UINT64_T, MPI_SUM, MASTER_UNIT, na.nodeComm);
@@ -77,9 +77,11 @@ int main()
 		MPI_Reduce(&succ_ea, &total_succ_ea, 1, MPI_UINT64_T, MPI_SUM, MASTER_UNIT, na.nodeComm);
 		MPI_Reduce(&fail_ea, &total_fail_ea, 1, MPI_UINT64_T, MPI_SUM, MASTER_UNIT, na.nodeComm);
 		MPI_Reduce(&cpu_time_used, &node_time, 1, MPI_DOUBLE, MPI_MAX, MASTER_UNIT, na.nodeComm);
+		fail_time /= CLOCKS_PER_SEC;
+		MPI_Reduce(&fail_time, &total_fail_time, 1, MPI_DOUBLE, MPI_MAX, MASTER_UNIT, na.nodeComm);
                 if (na.rank == MASTER_UNIT)
-                        printf("[Node %d]Execution time = %f seconds, %lu, %lu, %lu, %lu\n", na.node_id,
-					node_time, total_succ_cs, total_fail_cs, total_succ_ea, total_fail_ea);
+                        printf("[Node %d]Execution time = %f s, %f s, %lu, %lu, %lu, %lu\n", na.node_id,
+					node_time, total_fail_time, total_succ_cs, total_fail_cs, total_succ_ea, total_fail_ea);
         #endif
 
 	BCL::finalize();

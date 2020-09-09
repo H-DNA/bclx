@@ -1,6 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include <ctime>
 #include <cmath>
 
 namespace dds
@@ -29,10 +30,11 @@ namespace dds
 	
 	//tracing
 	#ifdef  TRACING
-        	uint64_t        succ_cs = 0;
-		uint64_t	succ_ea = 0;
-		uint64_t	fail_cs = 0;
-		uint64_t	fail_ea = 0;
+        	uint64_t        succ_cs 	= 0;
+		uint64_t	succ_ea 	= 0;
+		uint64_t	fail_cs 	= 0;
+		uint64_t	fail_ea 	= 0;
+		double		fail_time	= 0;
 	#endif
 
 } /* namespace dds */

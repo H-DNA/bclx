@@ -1,7 +1,7 @@
 #ifndef STACK_TREIBER_H
 #define STACK_TREIBER_H
 
-#include <unistd.h>
+#include <ctime>
 #include "../../lib/backoff.h"
 
 namespace dds
@@ -81,12 +81,18 @@ bool dds::ts::stack<T>::push(const T &value)
 				newTopAddr;
 	backoff::backoff        bk(BK_INIT, BK_MAX);
 
+	//tracing
+	#ifdef	TRACING
+		time_t		start;
+	#endif
+
 	//allocate global memory to the new elem
 	newTopAddr = mem.malloc();
 	if (newTopAddr == nullptr)
 	{
 		//tracing
 		#ifdef	TRACING
+			printf("The stack is FULL\n");
 			++fail_cs;
 		#endif
 
@@ -95,6 +101,11 @@ bool dds::ts::stack<T>::push(const T &value)
 
 	while (true)
 	{
+		//tracing
+		#ifdef	TRACING
+			start = clock();
+		#endif
+
 		//get top (from global memory to local memory)
 		oldTopAddr = BCL::aget_sync(top);
 
@@ -117,12 +128,13 @@ bool dds::ts::stack<T>::push(const T &value)
 		}
 		else //if (BCL::cas_sync(top, oldTopAddr, newTopAddr) != oldTopAddr)
 		{
+			bk.delay_dbl();
+
 			//tracing
 			#ifdef	TRACING
+				fail_time += (clock() - start);
 				++fail_cs;
 			#endif
-
-			bk.delay_dbl();
 		}
 	}
 }
@@ -135,8 +147,18 @@ bool dds::ts::stack<T>::pop(T &value)
 				oldTopAddr2;
 	backoff::backoff        bk(BK_INIT, BK_MAX);
 
+	//tracing
+	#ifdef  TRACING
+		time_t		start;
+	#endif
+
 	while (true)
 	{
+		//tracing
+		#ifdef	TRACING
+			start = clock();
+		#endif
+
 		//get top (from global memory to local memory)
 		oldTopAddr = BCL::aget_sync(top);
 
@@ -149,6 +171,7 @@ bool dds::ts::stack<T>::pop(T &value)
 
 			//tracing
 			#ifdef	TRACING
+				printf("The stack is EMPTY\n");
 				++succ_cs;
 			#endif
 
@@ -178,12 +201,13 @@ bool dds::ts::stack<T>::pop(T &value)
 		}
 		else //if (BCL::cas_sync(top, oldTopAddr, oldTopVal.next) != oldTopAddr)
 		{
+			bk.delay_dbl();
+
 			//tracing
 			#ifdef	TRACING
+				fail_time += (clock() - start);
 				++fail_cs;
 			#endif
-
-			bk.delay_dbl();
 		}
 	}
 
