@@ -85,7 +85,7 @@ int main()
 		MPI_Reduce(&cpu_time_used, &node_time, 1, MPI_DOUBLE, MPI_MAX, MASTER_UNIT, na.nodeComm);
 		MPI_Reduce(&fail_time, &total_fail_time, 1, MPI_DOUBLE, MPI_MAX, MASTER_UNIT, na.nodeComm);
                 if (na.rank == MASTER_UNIT)
-                        printf("[Node %d]Execution time = %f s, %f s, %lu, %lu, %lu, %lu\n", na.node_id,
+                        printf("[Node %d]Execution time = %f (s), %f (s), %lu, %lu, %lu, %lu\n", na.node_id,
 					node_time, total_fail_time, total_succ_cs, total_fail_cs, total_succ_ea, total_fail_ea);
         #endif
 

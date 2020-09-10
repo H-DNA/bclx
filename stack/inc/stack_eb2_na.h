@@ -139,7 +139,7 @@ bool dds::ebs2_na::stack<T>::push(const T &value)
 	temp.itsElem = mem.malloc();
 	if (temp.itsElem == nullptr)
 	{
-                printf("[%lu]ERROR: The stack is full now. The push is ineffective.\n", BCL::rank());
+                printf("The stack is FULL\n");
 
 		return false;
 	}
@@ -413,8 +413,18 @@ void dds::ebs2_na::stack<T>::less_op()
 	gptr<unit_info<T>>	q;
 	backoff::backoff	bk(BK_INIT, BK_MAX);
 
+	//tracing
+	#ifdef	TRACING
+		time_t		start;
+	#endif
+
 	while (true)
 	{
+		//tracing
+		#ifdef	TRACING
+			start = clock();
+		#endif
+
 		location.rank = myUID;
 		BCL::aput_sync(p, location);
 		pos = get_position();
@@ -483,7 +493,9 @@ void dds::ebs2_na::stack<T>::less_op()
 	label:
 		//tracing
 		#ifdef	TRACING
+			fail_time += (clock() - start);
 			++fail_ea;
+			start = clock();
 		#endif
 
 		if (try_perform_stack_op())
@@ -499,6 +511,7 @@ void dds::ebs2_na::stack<T>::less_op()
 		{
 			//tracing
 			#ifdef	TRACING
+				fail_time += (clock() - start);
 				++fail_cs;
 			#endif
 		}

@@ -1,6 +1,7 @@
 #ifndef STACK_EB_NA_H
 #define STACK_EB_NA_H
 
+#include <ctime>
 #include <random>
 #include "../../lib/backoff.h"
 #include "../../lib/ta.h"
@@ -140,7 +141,11 @@ bool dds::ebs_na::stack<T>::push(const T &value)
 	temp.itsElem = mem.malloc();
 	if (temp.itsElem == nullptr)
 	{
-                printf("[%lu]ERROR: The stack is full now. The push is ineffective.\n", BCL::rank());
+		//tracing
+		#ifdef	TRACING
+                	printf("The stack is FULL\n");
+			++fail_cs;
+		#endif
 
 		return false;
 	}
@@ -172,8 +177,15 @@ bool dds::ebs_na::stack<T>::pop(T &value)
 	gptr<gptr<elem<T>>> tempAddr = {p.rank, p.ptr};
 	gptr<elem<T>> tempAddr2 = BCL::load(tempAddr);
 
-	if (tempAddr2 == nullptr)
+	if (tempAddr2 == NULL_PTR_E)
+	{
+		//tracing
+		#ifdef	TRACING
+			//printf("The stack is EMPTY\n");
+		#endif
+
 		return false;
+	}
 	else
 	{
 		gptr<T>	tempAddr3 = {tempAddr2.rank, tempAddr2.ptr + sizeof(gptr<elem<T>>)};
@@ -223,10 +235,7 @@ bool dds::ebs_na::stack<T>::push_fill(const T &value)
                 //allocate global memory to the new elem
                 temp.itsElem = mem.malloc();
                 if (temp.itsElem == nullptr)
-                {
-                        printf("[%lu]ERROR: The stack is full now. The push is ineffective.\n", BCL::rank());
                         return false;
-                }
 
                 //get top (from global memory to local memory)
                 oldTopAddr = BCL::load(top);
@@ -414,8 +423,18 @@ void dds::ebs_na::stack<T>::less_op()
 	gptr<unit_info<T>>	q;
 	backoff::backoff	bk(BK_INIT, BK_MAX);
 
+	//tracing
+	#ifdef	TRACING
+		time_t		start;
+	#endif
+
 	while (true)
 	{
+		//tracing
+		#ifdef	TRACING
+			start = clock();
+		#endif
+
 		location.rank = myUID;
 		BCL::aput_sync(p, location);
 		pos = get_position();
@@ -484,7 +503,9 @@ void dds::ebs_na::stack<T>::less_op()
 	label:
 		//tracing
 		#ifdef	TRACING
+			fail_time += (clock() - start);
 			++fail_ea;
+			start = clock();
 		#endif
 
 		if (try_perform_stack_op())
@@ -500,6 +521,7 @@ void dds::ebs_na::stack<T>::less_op()
 		{
 			//tracing
 			#ifdef	TRACING
+				fail_time += (clock() - start);
 				++fail_cs;
 			#endif
 		}
@@ -509,6 +531,11 @@ void dds::ebs_na::stack<T>::less_op()
 template<typename T>
 void dds::ebs_na::stack<T>::stack_op()
 {
+	//tracing
+	#ifdef	TRACING
+		time_t start = clock();
+	#endif
+
 	if (try_perform_stack_op())
 	{
 		#ifdef	TRACING
@@ -518,6 +545,7 @@ void dds::ebs_na::stack<T>::stack_op()
 	else //if (!try_perform_stack_op())
 	{
 		#ifdef	TRACING
+			fail_time += (clock() - start);
 			++fail_cs;
 		#endif
 
