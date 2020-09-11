@@ -1,4 +1,6 @@
 #include <ctime>
+#include <thread>
+#include <chrono>
 #include <bcl/bcl.hpp>
 #include "../inc/stack.h"
 #include "../../lib/ta.h"
@@ -10,7 +12,8 @@ int main()
 {
         uint32_t	i,
 			value;
-        clock_t		start;
+        clock_t		start,
+			end;
         double 		cpu_time_used,
 			total_time;
 
@@ -30,8 +33,8 @@ int main()
         stack<uint32_t> myStack;
 
 	BCL::barrier();
+	start = clock();
 
-        cpu_time_used = 0;
 	for (i = 0; i < num_ops / 2; ++i)
 	{
 		//debugging
@@ -40,20 +43,18 @@ int main()
 		#endif
 
 		value = i;
-		start = clock();
 		myStack.push(value);
-		cpu_time_used += (clock() - start);
-		usleep(WORKLOAD);
+		std::this_thread::sleep_for(std::chrono::microseconds(WORKLOAD));
 
-		start = clock();
                 myStack.pop(value);
-		cpu_time_used += (clock() - start);
-		usleep(WORKLOAD);
+		std::this_thread::sleep_for(std::chrono::microseconds(WORKLOAD));
 	}
 
+	end = clock();
 	BCL::barrier();
 
-        cpu_time_used /= CLOCKS_PER_SEC;
+	cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC - ((double) num_ops * WORKLOAD) / 1000000;
+
         total_time = BCL::reduce(cpu_time_used, MASTER_UNIT, BCL::max<double>{});
         if (BCL::rank() == MASTER_UNIT)
 	{
