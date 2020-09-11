@@ -1,7 +1,6 @@
 #ifndef STACK_TREIBER_H
 #define STACK_TREIBER_H
 
-#include <ctime>
 #include "../../lib/backoff.h"
 
 namespace dds
@@ -83,7 +82,7 @@ bool dds::ts::stack<T>::push(const T &value)
 
 	//tracing
 	#ifdef	TRACING
-		time_t		start;
+		double		start;
 	#endif
 
 	//allocate global memory to the new elem
@@ -103,7 +102,7 @@ bool dds::ts::stack<T>::push(const T &value)
 	{
 		//tracing
 		#ifdef	TRACING
-			start = clock();
+			start = MPI_Wtime();
 		#endif
 
 		//get top (from global memory to local memory)
@@ -132,7 +131,7 @@ bool dds::ts::stack<T>::push(const T &value)
 
 			//tracing
 			#ifdef	TRACING
-				fail_time += (clock() - start);
+				fail_time += (MPI_Wtime() - start);
 				++fail_cs;
 			#endif
 		}
@@ -149,14 +148,14 @@ bool dds::ts::stack<T>::pop(T &value)
 
 	//tracing
 	#ifdef  TRACING
-		time_t		start;
+		double		start;
 	#endif
 
 	while (true)
 	{
 		//tracing
 		#ifdef	TRACING
-			start = clock();
+			start = MPI_Wtime();
 		#endif
 
 		//get top (from global memory to local memory)
@@ -205,7 +204,7 @@ bool dds::ts::stack<T>::pop(T &value)
 
 			//tracing
 			#ifdef	TRACING
-				fail_time += (clock() - start);
+				fail_time += (MPI_Wtime() - start);
 				++fail_cs;
 			#endif
 		}

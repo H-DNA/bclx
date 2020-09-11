@@ -415,14 +415,14 @@ void dds::ebs2_na::stack<T>::less_op()
 
 	//tracing
 	#ifdef	TRACING
-		time_t		start;
+		double		start;
 	#endif
 
 	while (true)
 	{
 		//tracing
 		#ifdef	TRACING
-			start = clock();
+			start = MPI_Wtime();
 		#endif
 
 		location.rank = myUID;
@@ -493,9 +493,9 @@ void dds::ebs2_na::stack<T>::less_op()
 	label:
 		//tracing
 		#ifdef	TRACING
-			fail_time += (clock() - start);
+			fail_time += (MPI_Wtime() - start);
 			++fail_ea;
-			start = clock();
+			start = MPI_Wtime();
 		#endif
 
 		if (try_perform_stack_op())
@@ -511,7 +511,7 @@ void dds::ebs2_na::stack<T>::less_op()
 		{
 			//tracing
 			#ifdef	TRACING
-				fail_time += (clock() - start);
+				fail_time += (MPI_Wtime() - start);
 				++fail_cs;
 			#endif
 		}

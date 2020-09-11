@@ -1,7 +1,6 @@
 #ifndef STACK_EB_NA_H
 #define STACK_EB_NA_H
 
-#include <ctime>
 #include <random>
 #include "../../lib/backoff.h"
 #include "../../lib/ta.h"
@@ -425,14 +424,14 @@ void dds::ebs_na::stack<T>::less_op()
 
 	//tracing
 	#ifdef	TRACING
-		time_t		start;
+		double		start;
 	#endif
 
 	while (true)
 	{
 		//tracing
 		#ifdef	TRACING
-			start = clock();
+			start = MPI_Wtime();
 		#endif
 
 		location.rank = myUID;
@@ -503,9 +502,9 @@ void dds::ebs_na::stack<T>::less_op()
 	label:
 		//tracing
 		#ifdef	TRACING
-			fail_time += (clock() - start);
+			fail_time += (MPI_Wtime() - start);
 			++fail_ea;
-			start = clock();
+			start = MPI_Wtime();
 		#endif
 
 		if (try_perform_stack_op())
@@ -521,7 +520,7 @@ void dds::ebs_na::stack<T>::less_op()
 		{
 			//tracing
 			#ifdef	TRACING
-				fail_time += (clock() - start);
+				fail_time += (MPI_Wtime() - start);
 				++fail_cs;
 			#endif
 		}
@@ -533,7 +532,7 @@ void dds::ebs_na::stack<T>::stack_op()
 {
 	//tracing
 	#ifdef	TRACING
-		time_t start = clock();
+		double start = MPI_Wtime();
 	#endif
 
 	if (try_perform_stack_op())
@@ -545,7 +544,7 @@ void dds::ebs_na::stack<T>::stack_op()
 	else //if (!try_perform_stack_op())
 	{
 		#ifdef	TRACING
-			fail_time += (clock() - start);
+			fail_time += (MPI_Wtime() - start);
 			++fail_cs;
 		#endif
 

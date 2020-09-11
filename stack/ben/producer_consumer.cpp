@@ -1,4 +1,3 @@
-#include <ctime>
 #include <thread>
 #include <chrono>
 #include <bcl/bcl.hpp>
@@ -12,10 +11,13 @@ int main()
 {
         uint32_t 	i,
 			value;
-	clock_t		start,
-			end;
-        double		cpu_time_used,
+	double		start,
 			total_time;
+
+	//tracing
+	#ifdef	TRACING
+		double	end;
+	#endif
 
         BCL::init();
 
@@ -52,7 +54,7 @@ int main()
 	}
 
         BCL::barrier();
-	start = clock();
+	start = MPI_Wtime();
 
 	if (BCL::rank() % 2 == 0)
 	{
@@ -80,12 +82,15 @@ int main()
 			std::this_thread::sleep_for(std::chrono::microseconds(WORKLOAD));
 		}
 
-	end = clock();
+	//tracing
+	#ifdef	TRACING
+		end = MPI_Wtime();
+	#endif
+
         BCL::barrier();
+	total_time = (MPI_Wtime() - start) - ((double) num_ops * WORKLOAD) / 1000000;
 
-	cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC - ((double) num_ops * WORKLOAD) / 1000000;
-
-	total_time = BCL::reduce(cpu_time_used, MASTER_UNIT, BCL::max<double>{});
+	total_time = BCL::reduce(total_time, MASTER_UNIT, BCL::max<double>{});
 	if (BCL::rank() == MASTER_UNIT)
 	{
         	printf("*\tEXEC_TIME\t:\t%f (s)\t\t*\n", total_time);
@@ -99,15 +104,16 @@ int main()
 				total_fail_cs,
 				total_succ_ea,
 				total_fail_ea;
-		double          node_time,
+		double          cpu_time_used,
+				node_time,
 				total_fail_time;
 		ta::na          na;
 
-		fail_time /= CLOCKS_PER_SEC;
+		cpu_time_used = (end - start) - ((double) num_ops * WORKLOAD) / 1000000;
 
 		if (na.node_num == 1)
-			printf("[Proc %lu]Execution time = %f (s), %f (s), %lu, %lu, %lu, %lu\n",
-					BCL::rank(), cpu_time_used, fail_time, succ_cs, fail_cs, succ_ea, fail_ea);
+			printf("[Proc %lu]%f (s), %f (s), %lu, %lu, %lu, %lu\n", BCL::rank(),
+					cpu_time_used, fail_time, succ_cs, fail_cs, succ_ea, fail_ea);
 
 		MPI_Reduce(&succ_cs, &total_succ_cs, 1, MPI_UINT64_T, MPI_SUM, MASTER_UNIT, na.nodeComm);
 		MPI_Reduce(&fail_cs, &total_fail_cs, 1, MPI_UINT64_T, MPI_SUM, MASTER_UNIT, na.nodeComm);
@@ -116,8 +122,8 @@ int main()
 		MPI_Reduce(&cpu_time_used, &node_time, 1, MPI_DOUBLE, MPI_MAX, MASTER_UNIT, na.nodeComm);
 		MPI_Reduce(&fail_time, &total_fail_time, 1, MPI_DOUBLE, MPI_MAX, MASTER_UNIT, na.nodeComm);
 		if (na.rank == MASTER_UNIT)
-			printf("[Node %d]Execution time = %f (s), %f (s), %lu, %lu, %lu, %lu\n", na.node_id,
-					node_time, total_fail_time, total_succ_cs, total_fail_cs, total_succ_ea, total_fail_ea);
+			printf("[Node %d]%f (s), %f (s), %lu, %lu, %lu, %lu\n", na.node_id, node_time,
+					total_fail_time, total_succ_cs, total_fail_cs, total_succ_ea, total_fail_ea);
 	#endif
 
 	BCL::finalize();
