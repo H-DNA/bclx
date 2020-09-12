@@ -29,17 +29,19 @@ namespace ts
 	{
 	public:
 		stack();			//collective
+		stack(const uint64_t &num);	//collective
 		~stack();			//collective
 		bool push(const T &value);	//non-collective
 		bool pop(T &value);		//non-collective
 		void print();			//collective
-                bool push_fill(const T &value);	//collective
 
 	private:
         	const gptr<elem<T>> 	NULL_PTR = nullptr; 	//is a null constant
 
 		memory<elem<T>>		mem;	//handles global memory
                 gptr<gptr<elem<T>>>	top;	//points to global address of the top
+
+		bool push_fill(const T &value);
 	};
 
 } /* namespace ts */
@@ -63,6 +65,28 @@ dds::ts::stack<T>::stack()
 
 	//synchronize
 	BCL::barrier();
+}
+
+template<typename T>
+dds::ts::stack<T>::stack(const uint64_t &num)
+{
+	//synchronize
+	BCL::barrier();
+
+	top = BCL::alloc<gptr<elem<T>>>(1);
+	if (BCL::rank() == MASTER_UNIT)
+	{
+		BCL::store(NULL_PTR, top);
+		printf("*\tSTACK\t\t:\tTS\t\t\t*\n");
+
+		for (uint64_t i = 0; i < num; ++i)
+			push_fill(i);
+	}
+	else
+		top.rank = MASTER_UNIT;
+
+        //synchronize
+        BCL::barrier();
 }
 
 template<typename T>

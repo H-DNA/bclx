@@ -45,11 +45,11 @@ namespace ebs2_na
 	{
 	public:
 		stack();			//collective
+		stack(const uint64_t &num);	//collective
 		~stack();			//collective
 		bool push(const T &value);	//non-collective
 		bool pop(T &value);		//non-collective
 		void print();			//collective
-		bool push_fill(const T &value); //collective
 
 	private:
        		const gptr<elem<T>> 		NULL_PTR_E = 	nullptr;
@@ -75,6 +75,7 @@ namespace ebs2_na
 
 		ta::na                          na;             //contains node information
 
+		bool push_fill(const T &value);
 		uint32_t get_position();
 		void adapt_width(const bool &);
 		bool try_collision(const gptr<unit_info<T>> &, const uint32_t &);
@@ -108,6 +109,38 @@ dds::ebs2_na::stack<T>::stack()
 	{
                 BCL::store(NULL_PTR_E, top);
                 printf("*\tSTACK\t\t:\tEBS2_NA\t\t\t*\n");
+	}
+	else //if (BCL::rank() != MASTER_UNIT)
+		top.rank = MASTER_UNIT;
+
+	//synchronize
+	BCL::barrier();
+}
+
+template<typename T>
+dds::ebs2_na::stack<T>::stack(const uint64_t &num)
+{
+	//synchronize
+	BCL::barrier();
+
+	location = BCL::alloc<gptr<unit_info<T>>>(1);
+	BCL::store(NULL_PTR_U, location);
+
+	p = BCL::alloc<unit_info<T>>(1);
+
+	collision = BCL::alloc<uint32_t>(ceil(COLL_SIZE / BCL::nprocs()));
+	BCL::store(NULL_UNIT, collision);
+
+	adapt = {COUNT_INIT, FACTOR_INIT};
+
+	top = BCL::alloc<gptr<elem<T>>>(1);
+	if (BCL::rank() == MASTER_UNIT)
+	{
+		BCL::store(NULL_PTR_E, top);
+		printf("*\tSTACK\t\t:\tEBS2_NA\t\t\t*\n");
+
+		for (uint64_t i = 0; i < num; ++i)
+		push_fill(i);
 	}
 	else //if (BCL::rank() != MASTER_UNIT)
 		top.rank = MASTER_UNIT;
