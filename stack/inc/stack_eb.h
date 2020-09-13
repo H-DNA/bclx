@@ -44,11 +44,11 @@ namespace ebs
 	{
 	public:
 		stack();			//collective
+		stack(const uint64_t &num);	//collective
 		~stack();			//collective
 		bool push(const T &value);	//non-collective
 		bool pop(T &value);		//non-collective
 		void print();			//collective
-		bool push_fill(const T &value);	//collective
 
 	private:
        		const gptr<elem<T>> 		NULL_PTR_E = 	nullptr;
@@ -72,6 +72,7 @@ namespace ebs
 		gptr<uint32_t>			collision;	//contains the rank of the unit trying to collide
                 adapt_params			adapt;          //contains the adaptative elimination backoff
 
+		bool push_fill(const T &value);
 		uint32_t get_position();
 		void adapt_width(const bool &);
 		bool try_collision(const gptr<unit_info<T>> &, const uint32_t &);
@@ -115,6 +116,38 @@ dds::ebs::stack<T>::stack()
 }
 
 template<typename T>
+dds::ebs::stack<T>::stack(const uint64_t &num)
+{
+	//synchronize
+	BCL::barrier();
+
+	location = BCL::alloc<gptr<unit_info<T>>>(1);
+	BCL::store(NULL_PTR_U, location);
+
+	p = BCL::alloc<unit_info<T>>(1);
+
+	collision = BCL::alloc<uint32_t>(ceil(COLL_SIZE / BCL::nprocs()));
+	BCL::store(NULL_UNIT, collision);
+
+	adapt = {COUNT_INIT, FACTOR_INIT};
+
+	top = BCL::alloc<gptr<elem<T>>>(1);
+	if (BCL::rank() == MASTER_UNIT)
+	{
+		BCL::store(NULL_PTR_E, top);
+		printf("*\tSTACK\t\t:\tEBS\t\t\t*\n");
+
+		for (uint64_t i = 0; i < num; ++i)
+			push_fill(i);
+	}
+	else //if (BCL::rank() != MASTER_UNIT)
+		top.rank = MASTER_UNIT;
+
+	//synchronize
+	BCL::barrier();
+}
+
+template<typename T>
 dds::ebs::stack<T>::~stack()
 {
 	if (BCL::rank() != MASTER_UNIT)
@@ -137,7 +170,11 @@ bool dds::ebs::stack<T>::push(const T &value)
 	temp.itsElem = mem.malloc();
 	if (temp.itsElem == nullptr)
 	{
-                printf("[%lu]ERROR: The stack is full now. The push is ineffective.\n", BCL::rank());
+		//tracing
+		#ifdef	TRACING
+                	printf("The stack is FULL\n");
+			++fail_cs;
+		#endif
 
 		return false;
 	}
@@ -170,7 +207,14 @@ bool dds::ebs::stack<T>::pop(T &value)
 	gptr<elem<T>> tempAddr2 = BCL::load(tempAddr);
 
 	if (tempAddr2 == nullptr)
+	{
+		//tracing
+		#ifdef	TRACING
+			//printf("The stack is EMPTY\n");
+		#endif
+
 		return false;
+	}
 	else
 	{
 		gptr<T>	tempAddr3 = {tempAddr2.rank, tempAddr2.ptr + sizeof(gptr<elem<T>>)};
@@ -220,10 +264,10 @@ bool dds::ebs::stack<T>::push_fill(const T &value)
                 //allocate global memory to the new elem
                 temp.itsElem = mem.malloc();
                 if (temp.itsElem == nullptr)
-                {
-                        printf("[%lu]ERROR: The stack is full now. The push is ineffective.\n", BCL::rank());
+		{
+			printf("The stack if FULL\n");
                         return false;
-                }
+		}
 
                 //get top (from global memory to local memory)
                 oldTopAddr = BCL::load(top);
@@ -282,6 +326,7 @@ bool dds::ebs::stack<T>::try_perform_stack_op()
 			if (oldTopAddr == nullptr)
 			{
 				BCL::store(NULL_PTR_E, tempAddr);
+
 				return true;
 			}
 
@@ -299,6 +344,7 @@ bool dds::ebs::stack<T>::try_perform_stack_op()
 		if (BCL::cas_sync(top, oldTopAddr, newTopVal.next) == oldTopAddr)
 		{
 			BCL::store(oldTopAddr, tempAddr);
+
 			res = true;
 		}
 		else
@@ -409,8 +455,18 @@ void dds::ebs::stack<T>::less_op()
 	gptr<unit_info<T>>	q;
 	backoff::backoff	bk(BK_INIT, BK_MAX);
 
+	//tracing
+	#ifdef	TRACING
+		double		start;
+	#endif
+
 	while (true)
 	{
+		//tracing
+		#ifdef	TRACING
+			start = MPI_Wtime();
+		#endif
+
 		location.rank = myUID;
 		BCL::aput_sync(p, location);
 		pos = get_position();
@@ -479,7 +535,9 @@ void dds::ebs::stack<T>::less_op()
 	label:
 		//tracing
 		#ifdef	TRACING
+			fail_time += (MPI_Wtime() - start);
 			++fail_ea;
+			start = MPI_Wtime();
 		#endif
 
 		if (try_perform_stack_op())
@@ -495,6 +553,7 @@ void dds::ebs::stack<T>::less_op()
 		{
 			//tracing
 			#ifdef	TRACING
+				fail_time += (MPI_Wtime() - start);
 				++fail_cs;
 			#endif
 		}
@@ -504,15 +563,23 @@ void dds::ebs::stack<T>::less_op()
 template<typename T>
 void dds::ebs::stack<T>::stack_op()
 {
+	//tracing
+	#ifdef  TRACING
+		double start = MPI_Wtime();
+	#endif
+
 	if (try_perform_stack_op())
 	{
+		//tracing
 		#ifdef	TRACING
 			++succ_cs;
 		#endif
 	}
 	else
 	{
+		//tracing
 		#ifdef	TRACING
+			fail_time += (MPI_Wtime() - start);
 			++fail_cs;
 		#endif
 

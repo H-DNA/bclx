@@ -65,6 +65,7 @@ int main()
 		}
 
 	end = MPI_Wtime();
+
 	elapsed_time = (end - start) - ((double) num_ops * WORKLOAD) / 1000000;
 
 	total_time = BCL::reduce(elapsed_time, MASTER_UNIT, BCL::max<double>{});

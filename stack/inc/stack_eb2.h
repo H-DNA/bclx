@@ -44,11 +44,11 @@ namespace ebs2
 	{
 	public:
 		stack();			//collective
+		stack(const uint64_t &num);	//collective
 		~stack();			//collective
 		bool push(const T &value);	//non-collective
 		bool pop(T &value);		//non-collective
 		void print();			//collective
-		bool push_fill(const T &value); //collective
 
 	private:
        		const gptr<elem<T>> 		NULL_PTR_E = 	nullptr;
@@ -72,6 +72,7 @@ namespace ebs2
 		gptr<uint32_t>			collision;	//contains the rank of the unit trying to collide
                 adapt_params			adapt;          //contains the adaptative elimination backoff
 
+		bool push_fill(const T &value);
 		uint32_t get_position();
 		void adapt_width(const bool &);
 		bool try_collision(const gptr<unit_info<T>> &, const uint32_t &);
@@ -114,6 +115,38 @@ dds::ebs2::stack<T>::stack()
 }
 
 template<typename T>
+dds::ebs2::stack<T>::stack(const uint64_t &num)
+{
+	//synchronize
+	BCL::barrier();
+
+	location = BCL::alloc<gptr<unit_info<T>>>(1);
+	BCL::store(NULL_PTR_U, location);
+
+	p = BCL::alloc<unit_info<T>>(1);
+
+	collision = BCL::alloc<uint32_t>(ceil(COLL_SIZE / BCL::nprocs()));
+	BCL::store(NULL_UNIT, collision);
+
+	adapt = {COUNT_INIT, FACTOR_INIT};
+
+	top = BCL::alloc<gptr<elem<T>>>(1);
+	if (BCL::rank() == MASTER_UNIT)
+	{
+		BCL::store(NULL_PTR_E, top);
+		printf("*\tSTACK\t\t:\tEBS2\t\t\t*\n");
+
+		for (uint64_t i = 0; i < num; ++i)
+			push_fill(i);
+	}
+	else //if (BCL::rank() != MASTER_UNIT)
+		top.rank = MASTER_UNIT;
+
+	//synchronize
+	BCL::barrier();
+}
+
+template<typename T>
 dds::ebs2::stack<T>::~stack()
 {
 	if (BCL::rank() != MASTER_UNIT)
@@ -136,7 +169,7 @@ bool dds::ebs2::stack<T>::push(const T &value)
 	temp.itsElem = mem.malloc();
 	if (temp.itsElem == nullptr)
 	{
-                printf("[%lu]ERROR: The stack is full now. The push is ineffective.\n", BCL::rank());
+                printf("The stack is FULL\n");
 
 		return false;
 	}
@@ -220,7 +253,7 @@ bool dds::ebs2::stack<T>::push_fill(const T &value)
                 temp.itsElem = mem.malloc();
                 if (temp.itsElem == nullptr)
                 {
-                        printf("[%lu]ERROR: The stack is full now. The push is ineffective.\n", BCL::rank());
+                        printf("The stack is FULL\n");
                         return false;
                 }
 
@@ -408,8 +441,18 @@ void dds::ebs2::stack<T>::less_op()
 	gptr<unit_info<T>>	q;
 	backoff::backoff	bk(BK_INIT, BK_MAX);
 
+	//tracing
+	#ifdef	TRACING
+		double		start;
+	#endif
+
 	while (true)
 	{
+		//tracing
+		#ifdef	TRACING
+			start = MPI_Wtime();
+		#endif
+
 		location.rank = myUID;
 		BCL::aput_sync(p, location);
 		pos = get_position();
@@ -478,7 +521,9 @@ void dds::ebs2::stack<T>::less_op()
 	label:
 		//tracing
 		#ifdef	TRACING
+			fail_time += (MPI_Wtime() - start);
 			++fail_ea;
+			start = MPI_Wtime();
 		#endif
 
 		if (try_perform_stack_op())
@@ -494,6 +539,7 @@ void dds::ebs2::stack<T>::less_op()
 		{
 			//tracing
 			#ifdef	TRACING
+				fail_time += (MPI_Wtime() - start);
 				++fail_cs;
 			#endif
 		}

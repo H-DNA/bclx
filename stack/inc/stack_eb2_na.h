@@ -256,7 +256,7 @@ bool dds::ebs2_na::stack<T>::push_fill(const T &value)
                 temp.itsElem = mem.malloc();
                 if (temp.itsElem == nullptr)
                 {
-                        printf("[%lu]ERROR: The stack is full now. The push is ineffective.\n", BCL::rank());
+                        printf("The stack is FULL\n");
                         return false;
                 }
 

@@ -267,7 +267,10 @@ bool dds::ebs_na::stack<T>::push_fill(const T &value)
                 //allocate global memory to the new elem
                 temp.itsElem = mem.malloc();
                 if (temp.itsElem == nullptr)
+		{
+			printf("The stack is FULL\n");
                         return false;
+		}
 
                 //get top (from global memory to local memory)
                 oldTopAddr = BCL::load(top);
@@ -570,12 +573,14 @@ void dds::ebs_na::stack<T>::stack_op()
 
 	if (try_perform_stack_op())
 	{
+		//tracing
 		#ifdef	TRACING
 			++succ_cs;
 		#endif
 	}
 	else //if (!try_perform_stack_op())
 	{
+		//tracing
 		#ifdef	TRACING
 			fail_time += (MPI_Wtime() - start);
 			++fail_cs;
