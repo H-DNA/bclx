@@ -11,6 +11,7 @@ int main()
 {
         uint32_t	i,
 			value;
+	uint64_t	num_ops;
         double		start,
 			end,
 			elapsed_time,
@@ -18,18 +19,8 @@ int main()
 
 	BCL::init();
 
-        uint32_t        num_ops = ELEM_PER_UNIT / BCL::nprocs();
-
-	if (BCL::rank() == MASTER_UNIT)
-	{
-                printf("*********************************************************\n");
-                printf("*\tBENCHMARK\t:\tSequential-alternating\t*\n");
-                printf("*\tNUM_UNITS\t:\t%lu\t\t\t*\n", BCL::nprocs());
-                printf("*\tNUM_OPS\t\t:\t%u (ops/unit)\t*\n", num_ops);
-                printf("*\tWORKLOAD\t:\t%u (us)\t\t\t*\n", WORKLOAD);
-	}
-
         stack<uint32_t> myStack;
+	num_ops = ELEMS_PER_UNIT / BCL::nprocs();
 
 	start = MPI_Wtime();
 
@@ -54,8 +45,14 @@ int main()
         total_time = BCL::reduce(elapsed_time, MASTER_UNIT, BCL::max<double>{});
         if (BCL::rank() == MASTER_UNIT)
 	{
+		printf("*********************************************************\n");
+		printf("*\tBENCHMARK\t:\tSequential-alternating\t*\n");
+		printf("*\tNUM_UNITS\t:\t%lu\t\t\t*\n", BCL::nprocs());
+		printf("*\tNUM_OPS\t\t:\t%u (ops/unit)\t\t*\n", num_ops);
+		printf("*\tWORKLOAD\t:\t%u (us)\t\t\t*\n", WORKLOAD);
+		printf("*\tSTACK\t\t:\t%s\t\t\t*\n", stack_name.c_str());
                 printf("*\tEXEC_TIME\t:\t%f (s)\t\t*\n", total_time);
-                printf("*\tTHROUGHPUT\t:\t%f (ops/s)\t*\n", ELEM_PER_UNIT / total_time);
+                printf("*\tTHROUGHPUT\t:\t%f (ops/s)\t*\n", ELEMS_PER_UNIT / total_time);
                 printf("*********************************************************\n");
 	}
 

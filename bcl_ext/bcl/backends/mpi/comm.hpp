@@ -128,6 +128,12 @@ inline void reduce(const T *src_buf, T *dst_buf, const size_t &dst_rank, const a
 	MPI_Reduce(src_buf, dst_buf, size, op.type(), op.op(), dst_rank, BCL::comm);
 }
 
+template <typename T, typename U>
+inline void allreduce(const T *src_buf, T *dst_buf, const atomic_op <U> &op, const size_t &size)
+{
+	MPI_Allreduce(src_buf, dst_buf, size, op.type(), op.op(), BCL::comm);
+}
+
 /**/
 
 // Read size T's from src -> dst
@@ -509,7 +515,7 @@ inline T reduce(const T& val, Op fn, size_t dst_rank) {
   }
 }
 
-template <typename T, typename Op>
+/*template <typename T, typename Op>
 inline T allreduce(const T& val, Op fn) {
   T rv;
 
@@ -524,7 +530,7 @@ inline T allreduce(const T &val, const abstract_op <T> &op) {
   T rv;
   MPI_Allreduce(&val, &rv, 1, op.type(), op.op(), BCL::comm);
   return rv;
-}
+}*/
 
 template <typename T>
 inline T fetch_and_op(const GlobalPtr <T> ptr, const T &val, const atomic_op <T> &op) {

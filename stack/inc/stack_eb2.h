@@ -105,7 +105,7 @@ dds::ebs2::stack<T>::stack()
         if (BCL::rank() == MASTER_UNIT)
 	{
                 BCL::store(NULL_PTR_E, top);
-                printf("*\tSTACK\t\t:\tEBS2\t\t\t*\n");
+		stack_name = "EBS2";
 	}
 	else //if (BCL::rank() != MASTER_UNIT)
 		top.rank = MASTER_UNIT;
@@ -134,7 +134,7 @@ dds::ebs2::stack<T>::stack(const uint64_t &num)
 	if (BCL::rank() == MASTER_UNIT)
 	{
 		BCL::store(NULL_PTR_E, top);
-		printf("*\tSTACK\t\t:\tEBS2\t\t\t*\n");
+		stack_name = "EBS2";
 
 		for (uint64_t i = 0; i < num; ++i)
 			push_fill(i);
@@ -152,8 +152,13 @@ dds::ebs2::stack<T>::~stack()
 	if (BCL::rank() != MASTER_UNIT)
 		top.rank = BCL::rank();
 	BCL::dealloc<gptr<elem<T>>>(top);
+
+	collision.rank = BCL::rank();
         BCL::dealloc<uint32_t>(collision);
+
         BCL::dealloc<unit_info<T>>(p);
+
+	location.rank = BCL::rank();
 	BCL::dealloc<gptr<unit_info<T>>>(location);
 }
 
@@ -439,7 +444,7 @@ void dds::ebs2::stack<T>::less_op()
 	unit_info<T>		pVal,
 				qVal;
 	gptr<unit_info<T>>	q;
-	backoff::backoff	bk(BK_INIT, BK_MAX);
+	backoff::backoff	bk(bk_init, bk_max);
 
 	//tracing
 	#ifdef	TRACING

@@ -18,6 +18,7 @@ int main()
 			total_time;
 
         BCL::init();
+	ta::na		na;
 
 	if (BCL::nprocs() % 2 != 0)
 	{
@@ -30,34 +31,40 @@ int main()
 
 	start = MPI_Wtime();
 
-	if (BCL::rank() % 2 == 0)
+	if (na.node_id != na.node_id_master)
 	{
-		for (i = 0; i < num_ops; ++i)
+		if (BCL::rank() % 2 == 0)
 		{
-			//debugging
-			#ifdef DEBUGGING
-               			printf ("[%lu]%u\n", BCL::rank(), i);
-			#endif
+			for (i = 0; i < num_ops; ++i)
+			{
+				//debugging
+				#ifdef DEBUGGING
+               				printf ("[%lu]%u\n", BCL::rank(), i);
+				#endif
 
-			myStack.push(i);
-			std::this_thread::sleep_for(std::chrono::microseconds(WORKLOAD));
+				myStack.push(i);
+				std::this_thread::sleep_for(std::chrono::microseconds(WORKLOAD));
+			}
 		}
+		else //if (BCL::rank() % 2 != 0)
+			for (i = 0; i < num_ops; ++i)
+			{
+                        	//debugging
+				#ifdef DEBUGGING
+                        		printf ("[%lu]%u\n", BCL::rank(), i);
+				#endif
+
+				myStack.pop(value);
+				std::this_thread::sleep_for(std::chrono::microseconds(WORKLOAD));
+			}
 	}
-	else //if (BCL::rank() % 2 != 0)
-		for (i = 0; i < num_ops; ++i)
-		{
-                        //debugging
-			#ifdef DEBUGGING
-                        	printf ("[%lu]%u\n", BCL::rank(), i);
-			#endif
-
-			myStack.pop(value);
-			std::this_thread::sleep_for(std::chrono::microseconds(WORKLOAD));
-		}
 
 	end = MPI_Wtime();
 
-	elapsed_time = (end - start) - ((double) num_ops * WORKLOAD) / 1000000;
+	if (na.node_id == na.node_id_master)
+		elapsed_time = end - start;
+	else //if (na.node_id != na.node_id_master)
+		elapsed_time = (end - start) - ((double) num_ops * WORKLOAD) / 1000000;
 
 	total_time = BCL::reduce(elapsed_time, MASTER_UNIT, BCL::max<double>{});
 	if (BCL::rank() == MASTER_UNIT)
@@ -69,7 +76,7 @@ int main()
 		printf("*\tWORKLOAD\t:\t%u (us)\t\t\t*\n", WORKLOAD);
 		printf("*\tSTACK\t\t:\t%s\t\t\t*\n", stack_name.c_str());
 		printf("*\tEXEC_TIME\t:\t%f (s)\t\t*\n", total_time);
-		printf("*\tTHROUGHPUT\t:\t%f (ops/s)\t*\n", ELEMS_PER_UNIT / total_time);
+		printf("*\tTHROUGHPUT\t:\t%f (ops/s)\t*\n", (ELEMS_PER_UNIT - num_ops * na.size) / total_time);
                 printf("*********************************************************\n");
 	}
 
@@ -81,7 +88,6 @@ int main()
 				total_fail_ea;
 		double		node_time,
 				total_fail_time;
-		ta::na          na;
 
 		if (na.node_num == 1)
 			printf("[Proc %lu]%f (s), %f (s), %lu, %lu, %lu, %lu\n", BCL::rank(),

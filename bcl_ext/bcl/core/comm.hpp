@@ -104,6 +104,14 @@ inline T reduce(const T &src_buf, const size_t &dst_rank, const atomic_op <U> &o
 	return rv;
 }
 
+template <typename T, typename U>
+inline T allreduce(const T &src_buf, const atomic_op <U> &op)
+{
+	T rv;
+	BCL::allreduce(&src_buf, &rv, op, 1);
+	return rv;
+}
+
 /**/
 
 template <typename T>

@@ -58,7 +58,7 @@ dds::ts::stack<T>::stack()
 	if (BCL::rank() == MASTER_UNIT)
 	{
                 BCL::store(NULL_PTR, top);
-		printf("*\tSTACK\t\t:\tTS\t\t\t*\n");
+		stack_name = "TS";
 	}
 	else
 		top.rank = MASTER_UNIT;
@@ -77,7 +77,7 @@ dds::ts::stack<T>::stack(const uint64_t &num)
 	if (BCL::rank() == MASTER_UNIT)
 	{
 		BCL::store(NULL_PTR, top);
-		printf("*\tSTACK\t\t:\tTS\t\t\t*\n");
+		stack_name = "TS";
 
 		for (uint64_t i = 0; i < num; ++i)
 			push_fill(i);
@@ -102,7 +102,7 @@ bool dds::ts::stack<T>::push(const T &value)
 {
         gptr<elem<T>> 		oldTopAddr,
 				newTopAddr;
-	backoff::backoff        bk(BK_INIT, BK_MAX);
+	backoff::backoff        bk(bk_init, bk_max);
 
 	//tracing
 	#ifdef	TRACING
@@ -168,7 +168,7 @@ bool dds::ts::stack<T>::pop(T &value)
 	elem<T> 		oldTopVal;
 	gptr<elem<T>> 		oldTopAddr,
 				oldTopAddr2;
-	backoff::backoff        bk(BK_INIT, BK_MAX);
+	backoff::backoff        bk(bk_init, bk_max);
 
 	//tracing
 	#ifdef  TRACING

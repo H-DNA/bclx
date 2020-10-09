@@ -1,5 +1,5 @@
 #The main file name of your program
-OUT = producer_consumer
+OUT = sequential_alternating_trial
 
 #The number of units
 NUM_UNITS = 4
@@ -29,7 +29,7 @@ $(DIR_OUT)/$(OUT) : $(DIR_IN)/$(OUT).cpp
 
 #Run your program
 run : $(DIR_OUT)/$(OUT)
-	for i in `seq 5`; do mpirun -np $(NUM_UNITS) ./$(DIR_OUT)/$(OUT); done
+	mpirun -np $(NUM_UNITS) $(DIR_OUT)/$(OUT)
 
 #Remove your executable
 clean :

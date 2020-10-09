@@ -20,8 +20,8 @@ namespace hp
 
 	private:
                 const gptr<T>	NULL_PTR 	= nullptr;
-        	const uint64_t	HP_PER_UNIT 	= 1;
-        	#define         HP_TOTAL	BCL::nprocs() * HP_PER_UNIT
+        	const uint64_t	HPS_PER_UNIT 	= 1;
+        	#define         HP_TOTAL	BCL::nprocs() * HPS_PER_UNIT
         	#define         HP_WINDOW	HP_TOTAL * 2
 
                 gptr<T>         	pool;		//allocates global memory
@@ -43,11 +43,11 @@ dds::hp::memory<T>::memory()
 	//synchronize
 	BCL::barrier();
 
-        hp = BCL::alloc<gptr<T>>(HP_PER_UNIT);
+        hp = BCL::alloc<gptr<T>>(HPS_PER_UNIT);
         BCL::store(NULL_PTR, hp);
 
-	pool = poolRep = BCL::alloc<T>(ELEM_PER_UNIT);
-        capacity = pool.ptr + ELEM_PER_UNIT * sizeof(T);
+	pool = poolRep = BCL::alloc<T>(ELEMS_PER_UNIT);
+        capacity = pool.ptr + ELEMS_PER_UNIT * sizeof(T);
 
 	//synchronize
 	BCL::barrier();
@@ -107,7 +107,7 @@ void dds::hp::memory<T>::scan()
 	for (uint32_t i = 0; i < BCL::nprocs(); ++i)
 	{
 		hpTemp.rank = i;
-		for (uint32_t j = 0; j < HP_PER_UNIT; ++j)
+		for (uint32_t j = 0; j < HPS_PER_UNIT; ++j)
 		{
 			hptr = BCL::aget_sync(hpTemp);
 			if (hptr != nullptr)

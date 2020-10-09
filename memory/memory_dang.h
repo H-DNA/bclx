@@ -42,8 +42,8 @@ namespace dang
 template <typename T>
 dds::dang::memory<T>::memory()
 {
-        pool = poolRep = BCL::alloc<elem_dang<T>>(ELEM_PER_UNIT);
-        capacity = pool.ptr + ELEM_PER_UNIT * sizeof(elem_dang<T>);
+        pool = poolRep = BCL::alloc<elem_dang<T>>(ELEMS_PER_UNIT);
+        capacity = pool.ptr + ELEMS_PER_UNIT * sizeof(elem_dang<T>);
 }
 
 template <typename T>
