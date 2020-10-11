@@ -195,7 +195,7 @@ int main()
         {
 		std::cout << "BACKOFF RANGE = [" << left << ", " << right << "]\n";
 		std::cout << "*********************************************************\n";
-		std::cout << "*\tBENCHMARK\t:\tProducer-consumer\t*\n";
+		std::cout << "*\tBENCHMARK\t:\tSequential-alternating\t*\n";
 		std::cout << "*\tNUM_UNITS\t:\t" << BCL::nprocs() << "\t\t\t*\n";
 		std::cout << "*\tNUM_OPS\t\t:\t" << num_ops << " (ops/unit)\t\t*\n";
 		std::cout << "*\tWORKLOAD\t:\t" << WORKLOAD << " (us)\t\t\t*\n";
