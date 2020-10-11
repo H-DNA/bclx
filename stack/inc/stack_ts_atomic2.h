@@ -47,11 +47,12 @@ namespace tss_atomic2
 	class stack
 	{
         public:
-                stack();                //collective
-                ~stack();               //collective
-                void push(const T &);	//non-collective
-                bool pop(T *);          //non-collective
-                void print();           //collective
+                stack();                	//collective
+		stack(const uint64_t &num);     //collective
+                ~stack();               	//collective
+                bool push(const T &value);	//non-collective
+                bool pop(T &value);          	//non-collective
+                void print();           	//collective
 
         private:
         	const gptr<elem<T>>	NULL_PTR = nullptr;
@@ -60,6 +61,7 @@ namespace tss_atomic2
 		memory<elem<T>>		mem;
 		time			tim;
 
+		bool push_fill(const T &value);
 		gptr<elem<T>> get_youngest(const gptr<elem<T>> &);
 		bool remove(const gptr<elem<T>> &, const gptr<elem<T>> &, T *);
 		bool try_rem(const uint64_t &, bool &, T *);
@@ -105,10 +107,31 @@ dds::tss_atomic2::stack<T>::stack()
 	BCL::store(NULL_PTR, top);
 
 	if (BCL::rank() == MASTER_UNIT)
-                printf("*\tSTACK\t\t:\tTSS-atomic2\t\t*\n");
+                stack_name = "TSS_atomic2";
 
 	//synchronize
 	BCL::barrier();
+}
+
+template<typename T>
+dds::tss_atomic2::stack<T>::stack(const uint64_t &num)
+{
+	//synchronize
+	BCL::barrier();
+
+	top = BCL::alloc<gptr<elem<T>>>(1);
+	BCL::store(NULL_PTR, top);
+
+	if (BCL::rank() == MASTER_UNIT)
+	{
+		stack_name = "TSS_atomic2";
+
+		for (uint64_t i = 0; i < num; ++i)
+			push_fill(i);
+	}
+
+        //synchronize
+        BCL::barrier();
 }
 
 template <typename T>
@@ -118,7 +141,7 @@ dds::tss_atomic2::stack<T>::~stack()
 }
 
 template <typename T>
-void dds::tss_atomic2::stack<T>::push(const T &value)
+bool dds::tss_atomic2::stack<T>::push(const T &value)
 {
         uint64_t		ts;
 	gptr<gptr<elem<T>>>	addrTemp;
@@ -135,8 +158,8 @@ void dds::tss_atomic2::stack<T>::push(const T &value)
         newTopAddr = mem.malloc();
         if (newTopAddr == nullptr)
         {
-                printf("[%lu]ERROR: The stack is full now. The push is ineffective.\n", BCL::rank());
-                return;
+                printf("The stack is FULL\n");
+                return false;
         }
         newTopVal = {oldTopAddr, false, tim.TS_MAX, value};
 	BCL::store(newTopVal, newTopAddr);
@@ -161,10 +184,12 @@ void dds::tss_atomic2::stack<T>::push(const T &value)
         addrTemp2 = {newTopAddr.rank, newTopAddr.ptr +
 				sizeof(gptr<elem<T>>) + sizeof(uint64_t)};
 	BCL::aput_sync(ts, addrTemp2);
+
+	return true;
 }
 
 template <typename T>
-bool dds::tss_atomic2::stack<T>::pop(T *value)
+bool dds::tss_atomic2::stack<T>::pop(T &value)
 {
 	//elimination
 	uint64_t 	startTime = tim.getNewTS();
@@ -172,7 +197,7 @@ bool dds::tss_atomic2::stack<T>::pop(T *value)
 	bool success, result = NON_EMPTY;
 
 	do {
-		success = try_rem(startTime, result, value);
+		success = try_rem(startTime, result, &value);
 	} while (!success);
 
 	return result;
@@ -208,6 +233,30 @@ void dds::tss_atomic2::stack<T>::print()
 
 	//synchronize
 	BCL::barrier();
+}
+
+template <typename T>
+bool dds::tss_atomic2::stack<T>::push_fill(const T &value)
+{
+	gptr<elem<T>>		oldTopAddr,
+				newTopAddr;
+	elem<T>			newTopVal;
+
+	//Line number 12
+        oldTopAddr = BCL::aget_sync(top);
+
+	//Line number 13
+        newTopAddr = mem.malloc();
+        if (newTopAddr == nullptr)
+        {
+                printf("The stack is FULL\n");
+                return false;
+        }
+        newTopVal = {oldTopAddr, false, tim.getNewTS(), value};
+	BCL::store(newTopVal, newTopAddr);
+       	BCL::aput_sync(newTopAddr, top);
+
+	return true;
 }
 
 template <typename T>

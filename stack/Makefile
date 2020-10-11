@@ -1,5 +1,5 @@
 #The main file name of your program
-OUT = sequential_alternating_trial
+OUT = sequential_alternating
 
 #The number of units
 NUM_UNITS = 4

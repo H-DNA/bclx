@@ -5,7 +5,7 @@
 #include "../../lib/ta.h"
 
 using namespace dds;
-using namespace dds::ts;
+using namespace dds::tss_atomic2;
 
 int main()
 {

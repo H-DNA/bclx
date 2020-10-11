@@ -5,7 +5,7 @@
 #include "../../lib/ta.h"
 
 using namespace dds;
-using namespace dds::ts;
+using namespace dds::tss_atomic2;
 
 int main()
 {
@@ -48,7 +48,7 @@ int main()
 		printf("*********************************************************\n");
 		printf("*\tBENCHMARK\t:\tSequential-alternating\t*\n");
 		printf("*\tNUM_UNITS\t:\t%lu\t\t\t*\n", BCL::nprocs());
-		printf("*\tNUM_OPS\t\t:\t%u (ops/unit)\t\t*\n", num_ops);
+		printf("*\tNUM_OPS\t\t:\t%lu (ops/unit)\t\t*\n", num_ops);
 		printf("*\tWORKLOAD\t:\t%u (us)\t\t\t*\n", WORKLOAD);
 		printf("*\tSTACK\t\t:\t%s\t\t\t*\n", stack_name.c_str());
                 printf("*\tEXEC_TIME\t:\t%f (s)\t\t*\n", total_time);
