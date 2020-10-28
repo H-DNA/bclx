@@ -14,13 +14,14 @@ namespace backoff
         {
         public:
                 backoff(const uint64_t &init, const uint64_t &max);
-                void delay_exp();
-		void delay_dbl();
-		void delay_inc();
+                uint64_t delay_exp();
+		uint64_t delay_dbl();
+		uint64_t delay_inc();
 
         private:
 		uint64_t	bk;
 		uint64_t	bk_max;
+		uint64_t	res;
 	};
 
 } /* namespace backoff */
@@ -31,40 +32,48 @@ backoff::backoff::backoff(const uint64_t &init, const uint64_t &max)
 	bk_max = max;
 }
 
-void backoff::backoff::delay_exp()
+uint64_t backoff::backoff::delay_exp()
 {
 	if (bk > bk_max)
 		bk = bk_max;
 
         std::default_random_engine generator;
         std::uniform_int_distribution<uint64_t> distribution(0, bk);
-        std::this_thread::sleep_for(std::chrono::microseconds(distribution(generator)));
+	res = distribution(generator);
+        std::this_thread::sleep_for(std::chrono::microseconds(res));
 
 	if (2 * bk <= bk_max)
 		bk *= 2;
+
+	return res;
 }
 
-void backoff::backoff::delay_dbl()
+uint64_t backoff::backoff::delay_dbl()
 {
 	if (bk > bk_max)
 		bk = bk_max;
 
-        std::this_thread::sleep_for(std::chrono::microseconds((uint64_t) bk));
+	res = bk;
+        std::this_thread::sleep_for(std::chrono::microseconds(bk));
 	
 	if (2 * bk <= bk_max)
 		bk *= 2;
+
+	return res;
 }
 
-void backoff::backoff::delay_inc()
+uint64_t backoff::backoff::delay_inc()
 {
 	if (bk > bk_max)
 		bk = bk_max;
 
+	res = bk;
         std::this_thread::sleep_for(std::chrono::microseconds(bk));
 
 	if (1 + bk <= bk_max)
 		++bk;
 
+	return res;
 }
 
 #endif /* BACKOFF_H */

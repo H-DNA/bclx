@@ -1,19 +1,17 @@
-#ifndef STACK_TREIBER_H
-#define STACK_TREIBER_H
+#ifndef STACK_TREIBER_TEST_H
+#define STACK_TREIBER_TEST_H
 
 #include "../../lib/backoff.h"
 
 namespace dds
 {
 
-namespace ts
+namespace ts_test
 {
 
 	/* Macros */
-	#ifdef		MEM_REC
+	#ifdef MEM_REC
 		using namespace hp;
-	#elif defined	DANG
-		using namespace dang;
 	#else
 		using namespace dang3;
 	#endif
@@ -42,16 +40,17 @@ namespace ts
 
 		memory<elem<T>>		mem;	//handles global memory
                 gptr<gptr<elem<T>>>	top;	//points to global address of the top
+		uint64_t		bk_i;
 
 		bool push_fill(const T &value);
 	};
 
-} /* namespace ts */
+} /* namespace ts_test */
 
 } /* namespace dds */
 
 template<typename T>
-dds::ts::stack<T>::stack()
+dds::ts_test::stack<T>::stack()
 {
 	//synchronize
 	BCL::barrier();
@@ -60,17 +59,18 @@ dds::ts::stack<T>::stack()
 	if (BCL::rank() == MASTER_UNIT)
 	{
                 BCL::store(NULL_PTR, top);
-		stack_name = "TS";
+		stack_name = "TS_test";
 	}
 	else
 		top.rank = MASTER_UNIT;
+	bk_i = exp2l(0);
 
 	//synchronize
 	BCL::barrier();
 }
 
 template<typename T>
-dds::ts::stack<T>::stack(const uint64_t &num)
+dds::ts_test::stack<T>::stack(const uint64_t &num)
 {
 	//synchronize
 	BCL::barrier();
@@ -79,7 +79,7 @@ dds::ts::stack<T>::stack(const uint64_t &num)
 	if (BCL::rank() == MASTER_UNIT)
 	{
 		BCL::store(NULL_PTR, top);
-		stack_name = "TS";
+		stack_name = "TS_test";
 
 		for (uint64_t i = 0; i < num; ++i)
 			push_fill(i);
@@ -92,7 +92,7 @@ dds::ts::stack<T>::stack(const uint64_t &num)
 }
 
 template<typename T>
-dds::ts::stack<T>::~stack()
+dds::ts_test::stack<T>::~stack()
 {
 	if (BCL::rank() != MASTER_UNIT)
 		top.rank = BCL::rank();
@@ -100,11 +100,11 @@ dds::ts::stack<T>::~stack()
 }
 
 template<typename T>
-bool dds::ts::stack<T>::push(const T &value)
+bool dds::ts_test::stack<T>::push(const T &value)
 {
         gptr<elem<T>> 		oldTopAddr,
 				newTopAddr;
-	backoff::backoff        bk(bk_init, bk_max);
+	backoff::backoff        bk(bk_i, bk_max);
 
 	//tracing
 	#ifdef	TRACING
@@ -149,11 +149,14 @@ bool dds::ts::stack<T>::push(const T &value)
 				++succ_cs;
 			#endif
 
+			if (bk_i >= 2)
+				bk_i /= 2;
+
 			return true;
 		}
 		else //if (BCL::cas_sync(top, oldTopAddr, newTopAddr) != oldTopAddr)
 		{
-			bk.delay_dbl();
+			bk_i = bk.delay_dbl();
 
 			//tracing
 			#ifdef	TRACING
@@ -165,12 +168,12 @@ bool dds::ts::stack<T>::push(const T &value)
 }
 
 template<typename T>
-bool dds::ts::stack<T>::pop(T &value)
+bool dds::ts_test::stack<T>::pop(T &value)
 {
 	elem<T> 		oldTopVal;
 	gptr<elem<T>> 		oldTopAddr,
 				oldTopAddr2;
-	backoff::backoff        bk(bk_init, bk_max);
+	backoff::backoff        bk(bk_i, bk_max);
 
 	//tracing
 	#ifdef  TRACING
@@ -222,11 +225,14 @@ bool dds::ts::stack<T>::pop(T &value)
 				++succ_cs;
 			#endif
 
+			if (bk_i >= 2)
+				bk_i /= 2;
+
 			break;
 		}
 		else //if (BCL::cas_sync(top, oldTopAddr, oldTopVal.next) != oldTopAddr)
 		{
-			bk.delay_dbl();
+			bk_i = bk.delay_dbl();
 
 			//tracing
 			#ifdef	TRACING
@@ -251,7 +257,7 @@ bool dds::ts::stack<T>::pop(T &value)
 }
 
 template<typename T>
-void dds::ts::stack<T>::print()
+void dds::ts_test::stack<T>::print()
 {
 	//synchronize
 	BCL::barrier();
@@ -274,7 +280,7 @@ void dds::ts::stack<T>::print()
 }
 
 template<typename T>
-bool dds::ts::stack<T>::push_fill(const T &value)
+bool dds::ts_test::stack<T>::push_fill(const T &value)
 {
 	if (BCL::rank() == MASTER_UNIT)
 	{
@@ -299,5 +305,5 @@ bool dds::ts::stack<T>::push_fill(const T &value)
 	}
 }
 
-#endif /* STACK_TREIBER_H */
+#endif /* STACK_TREIBER_TEST_H */
 

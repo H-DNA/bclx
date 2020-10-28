@@ -29,6 +29,9 @@ namespace dang3
 template <typename T>
 dds::dang3::memory<T>::memory()
 {
+	if (BCL::rank() == MASTER_UNIT)
+		mem_manager = "DANG3";
+
 	pool = poolRep = BCL::alloc<T>(ELEMS_PER_UNIT);
         capacity = pool.ptr + ELEMS_PER_UNIT * sizeof(T);
 }

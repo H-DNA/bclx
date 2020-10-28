@@ -32,7 +32,7 @@ template <typename T>
 inline void rwrite_sync(const T *src, const GlobalPtr<T> &dst, const size_t &size)
 {
 	MPI_Put(src, size*sizeof(T), MPI_CHAR, dst.rank, dst.ptr, size*sizeof(T), MPI_CHAR, BCL::win);
-	MPI_Win_flush(dst.rank, BCL::win);
+	MPI_Win_flush_local(dst.rank, BCL::win);
 }
 
 template <typename T>
@@ -45,7 +45,7 @@ template <typename T>
 inline void awrite_sync(const T *src, const GlobalPtr<T> &dst, const size_t &size)
 {
 	MPI_Accumulate(src, size*sizeof(T), MPI_CHAR, dst.rank, dst.ptr, size*sizeof(T), MPI_CHAR, MPI_REPLACE, BCL::win);
-	MPI_Win_flush(dst.rank, BCL::win);
+	MPI_Win_flush_local(dst.rank, BCL::win);
 }
 
 template <typename T>
@@ -63,7 +63,7 @@ inline void lread(const GlobalPtr <T> &src, T *dst, const size_t &size)
 template <typename T>
 inline void rread_sync(const GlobalPtr <T> &src, T *dst, const size_t &size) {
 	MPI_Get(dst, size*sizeof(T), MPI_CHAR, src.rank, src.ptr, size*sizeof(T), MPI_CHAR, BCL::win);
-	MPI_Win_flush(src.rank, BCL::win);
+	MPI_Win_flush_local(src.rank, BCL::win);
 }
 
 template <typename T>
@@ -78,7 +78,7 @@ inline void aread_sync(const GlobalPtr <T> &src, T *dst, const size_t &size)
 
 	MPI_Get_accumulate(origin_addr, 0, MPI_CHAR, dst, size*sizeof(T), MPI_CHAR,
 				src.rank, src.ptr, size*sizeof(T), MPI_CHAR, MPI_NO_OP, BCL::win);
-	MPI_Win_flush(src.rank, BCL::win);
+	MPI_Win_flush_local(src.rank, BCL::win);
 }
 
 template <typename T>
@@ -94,7 +94,7 @@ template <typename T, typename U>
 inline void fetch_and_op_sync(const GlobalPtr<T> &dst, const T *val, const atomic_op <U> &op, T *result)
 {
 	MPI_Fetch_and_op(val, result, op.type(), dst.rank, dst.ptr, op.op(), BCL::win);
-	MPI_Win_flush(dst.rank, BCL::win);
+	MPI_Win_flush_local(dst.rank, BCL::win);
 }
 
 template <typename T>
@@ -119,7 +119,7 @@ inline void compare_and_swap_sync(const GlobalPtr<T> &dst, const T *old_val, con
 		printf("ERROR: The datatype not found!\n");
 
 	MPI_Compare_and_swap(new_val, old_val, result, datatype, dst.rank, dst.ptr, BCL::win);
-	MPI_Win_flush(dst.rank, BCL::win);
+	MPI_Win_flush_local(dst.rank, BCL::win);
 }
 
 template <typename T, typename U>

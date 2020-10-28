@@ -6,7 +6,6 @@ namespace dds
 
 namespace hp
 {
-
         template <typename T>
         class memory
         {
@@ -40,17 +39,14 @@ namespace hp
 template <typename T>
 dds::hp::memory<T>::memory()
 {
-	//synchronize
-	BCL::barrier();
+	if (BCL::rank() == MASTER_UNIT)
+		mem_manager = "HP";
 
         hp = BCL::alloc<gptr<T>>(HPS_PER_UNIT);
         BCL::store(NULL_PTR, hp);
 
 	pool = poolRep = BCL::alloc<T>(ELEMS_PER_UNIT);
         capacity = pool.ptr + ELEMS_PER_UNIT * sizeof(T);
-
-	//synchronize
-	BCL::barrier();
 }
 
 template <typename T>
@@ -63,11 +59,18 @@ dds::hp::memory<T>::~memory()
 template <typename T>
 dds::gptr<T> dds::hp::memory<T>::malloc()
 {
-        sds::elem<gptr<T>>      *addr;
+        gptr<T>		addr;
 
         //determine the global address of the new element
         if (listRecla.remove(addr) != EMPTY)
-                return addr->value;
+	{
+		//tracing
+		#ifdef	TRACING
+			++elem_re;
+		#endif
+
+                return addr;
+	}
         else //the list of reclaimed global memory is empty
         {
                 if (pool.ptr < capacity)
@@ -77,7 +80,14 @@ dds::gptr<T> dds::hp::memory<T>::malloc()
 			//try one more to reclaim global memory
 			scan();
 			if (listRecla.remove(addr) != EMPTY)
-				return addr->value;
+			{
+				//tracing
+				#ifdef  TRACING
+					++elem_re;
+				#endif
+
+				return addr;
+			}
 			else //the list of reclaimed global memory is empty
 				return nullptr;
 		}
@@ -94,7 +104,7 @@ void dds::hp::memory<T>::free(const gptr<T> &addr)
 
 template <typename T>
 void dds::hp::memory<T>::scan()
-{
+{	
 	uint64_t 		p = 0;			//contains the number of elems in @plist
 	gptr<T> 		hptr,			//Temporary variable
 				plist[HP_TOTAL];	//contains non-null hazard pointers
@@ -104,7 +114,7 @@ void dds::hp::memory<T>::scan()
 
 	//Stage 1
 	hpTemp.ptr = hp.ptr;
-	for (uint32_t i = 0; i < BCL::nprocs(); ++i)
+	for (uint64_t i = 0; i < BCL::nprocs(); ++i)
 	{
 		hpTemp.rank = i;
 		for (uint32_t j = 0; j < HPS_PER_UNIT; ++j)
@@ -115,7 +125,7 @@ void dds::hp::memory<T>::scan()
 			++hpTemp;
 		}
 	}
-
+	
 	//Stage 2
 	sds::heap_sort(plist, p);
 	sds::remove_duplicates(plist, p);

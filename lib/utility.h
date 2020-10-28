@@ -32,9 +32,7 @@ namespace sds
 		bool remove(T &);
 		bool remove(elem<T> *&);
 		void remove(elem<T> *, elem<T> *);
-
-		//debugging
-		//void print();
+		void print();
 
 	private:
 		elem<T>		*head;
@@ -143,7 +141,6 @@ void sds::list<T>::insert(const T &value)
 	{
 		tail = temp;
 		head = tail;
-
 	}
 	else //if (tail != nullptr)
 	{
@@ -227,11 +224,11 @@ void sds::list<T>::remove(elem<T> *prev, elem<T> *curr)
 	--len;
 }
 
-/*template <typename T>
+template <typename T>
 void sds::list<T>::print()
 {
 	for (elem<T> *temp = head; temp != NULL; temp = temp->next)
-		printf("%d\n", temp->value);
+		temp->value.print();
 }
 /**/
 
@@ -341,14 +338,15 @@ inline void sds::heap_sort(T *array, const uint64_t &size)
 template <typename T>
 inline void sds::remove_duplicates(T *array, uint64_t &size)
 {
-	uint64_t i = 0;
-	for (uint64_t j = 1; j < size; ++j)
-		if (array[j] != array[i])
-		{
-			++i;
-			array[i] = array[j];
-		}
-	size = ++i;
+	if (size <= 0)
+		return;
+
+	uint64_t	temp = 1;
+
+	for (uint64_t i = 0; i < size - 1; ++i)
+		if (array[i] != array[i + 1])
+			array[temp++] = array[i + 1];
+	size = temp;
 }
 /**/
 
