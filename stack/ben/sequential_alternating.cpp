@@ -9,8 +9,8 @@ using namespace dds::ts;
 
 int main()
 {
-        uint32_t	i,
-			value;
+        uint32_t	i;
+	uint32_t	value;
 	uint64_t	num_ops;
         double		start,
 			end,
@@ -31,7 +31,7 @@ int main()
 			printf ("[%lu]%u\n", BCL::rank(), i);
 		#endif
 
-		myStack.push(i);
+		myStack.push(value);
 		std::this_thread::sleep_for(std::chrono::microseconds(WORKLOAD));
 
                 myStack.pop(value);

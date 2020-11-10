@@ -200,6 +200,7 @@ int main()
 		std::cout << "*\tNUM_OPS\t\t:\t" << num_ops << " (ops/unit)\t\t*\n";
 		std::cout << "*\tWORKLOAD\t:\t" << WORKLOAD << " (us)\t\t\t*\n";
 		std::cout << "*\tSTACK\t\t:\t" << stack_name.c_str() << "\t\t\t*\n";
+		std::cout << "*\tMEMORY\t\t:\t" <<  mem_manager.c_str() << "\t\t\t*\n";
 		std::cout << "*\tEXEC_TIME\t:\t" << total_time_mid << " (s)\t\t*\n";
 		std::cout << "*\tTHROUGHPUT\t:\t" << ELEMS_PER_UNIT / total_time_mid << " (ops/s)\t\t*\n";
 		std::cout << "*********************************************************\n";

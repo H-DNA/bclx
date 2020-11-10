@@ -9,8 +9,8 @@ using namespace dds::ts;
 
 int main()
 {
-        uint32_t 	i,
-			value;
+        uint32_t 	i;
+	uint32_t	value;
 	uint64_t	num_ops;
 	double		start,
 			end,
