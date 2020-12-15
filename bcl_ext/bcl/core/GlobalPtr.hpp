@@ -233,16 +233,20 @@ struct GlobalPtr {
     CallHandler(const BCL::GlobalPtr<U>& ptr) : ptr_(ptr) {}
 
     U* operator->() {
-      // *reinterpret_cast<U*>(obj_) = *ptr_;
+      /*// *reinterpret_cast<U*>(obj_) = *ptr_;
       BCL::rget(ptr_, reinterpret_cast<U*>(obj_), 1);
-      return reinterpret_cast<U*>(obj_);
+      return reinterpret_cast<U*>(obj_);*/
+	    U *dang = new U;
+	    *dang = BCL::rget(ptr_);
+	    return dang;
     }
 
     // TODO: does not currently support -> with const
     const U* operator->() const {
-      // *reinterpret_cast<U*>(obj_) = *ptr_;
+      /*// *reinterpret_cast<U*>(obj_) = *ptr_;
       BCL::rget(ptr_, reinterpret_cast<U*>(obj_), 1);
-      return reinterpret_cast<U*>(obj_);
+      return reinterpret_cast<U*>(obj_);*/
+	    printf("CP2\n");
     }
 
     ~CallHandler() {

@@ -28,8 +28,6 @@ dds::lock_tas::lock_tas()
 	// allocate global (or shared) memory for flag
 	flag = BCL::alloc<bool>(1);
 
-	printf("CP1: %lu: %u, %u\n", BCL::rank(), flag.rank, flag.ptr);
-
 	// initialize flag with false
 	if (BCL::rank() == MASTER_RANK)
 		BCL::store(false, flag);

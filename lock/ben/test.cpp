@@ -17,16 +17,18 @@ int main(int argc, char *argv[])
   	std::cout << "(" << rank << "/" << nprocs << "): releasing lock" << std::endl;
   	l.release();
 
-	BCL::GlobalPtr<int> dang;
-	if (BCL::rank() == 1)
+	struct Abc
 	{
-		dang = BCL::alloc<int>(1);
-		printf("CP2: %lu: %u, %u\n", BCL::rank(), dang.rank, dang.ptr);
-	}
+		int i;
+		int j;
+	};
 
-	BCL::GlobalPtr<int> you;
-	you = BCL::alloc<int>(1);
-	printf("CP3: %lu: %u, %u\n", BCL::rank(), you.rank, you.ptr);
+	BCL::GlobalPtr<Abc> ptr = BCL::alloc<Abc>(1);
+	Abc test;
+	test.j = BCL::rank();
+	BCL::rput_sync(test, ptr);
+	//ptr->i = 0;
+	std::cout << BCL::rank() << "\t" << ptr->j << std::endl;
 
   	BCL::finalize();
   	return 0;
