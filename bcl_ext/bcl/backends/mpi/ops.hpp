@@ -15,6 +15,14 @@ namespace BCL {
   struct atomic_op : public virtual abstract_op <T> {};
 
   // Define datatypes
+	struct abstract_bool : public virtual abstract_op<bool>
+	{
+		MPI_Datatype type() const
+		{
+			return MPI_C_BOOL;
+		}
+	};
+
   struct abstract_int : public virtual abstract_op <int> {
     MPI_Datatype type() const { return MPI_INT; }
   };
@@ -109,6 +117,12 @@ namespace BCL {
 
 	template <typename T>
 	struct replace;
+
+	template<>
+	struct replace<bool> : public abstract_replace<bool>, public abstract_bool, public atomic_op<bool> {};
+
+	template <>
+	struct replace<int> : public abstract_replace<int>, public abstract_int, public atomic_op<int> {};
 
 	template <>
 	struct replace<uint64_t> : public abstract_replace<uint64_t>, public abstract_uint64_t, public atomic_op<uint64_t> {};

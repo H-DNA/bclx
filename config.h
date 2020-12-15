@@ -9,8 +9,8 @@ namespace dds
 
 	/* Configurations */
 	#define	TRACING
-	//#define	DANG
-	//#define	DEBUGGING
+	#define	MEM_REC
+	#define	DEBUGGING
 
 	const uint64_t	ELEMS_PER_UNIT	=	exp2l(15);
 	const uint32_t	WORKLOAD	=	1;		//us

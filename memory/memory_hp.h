@@ -18,10 +18,10 @@ namespace hp
                 void free(const gptr<T> &);	//deallocates global memory
 
 	private:
-                const gptr<T>	NULL_PTR 	= nullptr;
-        	const uint64_t	HPS_PER_UNIT 	= 1;
-        	#define         HP_TOTAL	BCL::nprocs() * HPS_PER_UNIT
-        	#define         HP_WINDOW	HP_TOTAL * 2
+                const		gptr<T>		NULL_PTR 	= nullptr;
+        	const		uint8_t		HPS_PER_UNIT 	= 1;
+        	const		uint64_t	HP_TOTAL	= BCL::nprocs() * HPS_PER_UNIT;
+        	const		uint64_t	HP_WINDOW	= HP_TOTAL * 2;
 
                 gptr<T>         	pool;		//allocates global memory
                 gptr<T>         	poolRep;	//deallocates global memory

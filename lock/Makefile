@@ -1,5 +1,5 @@
 #The main file name of your program
-OUT = sequential_alternating
+OUT = test
 
 #The number of units
 NUM_UNITS = 4
@@ -30,7 +30,7 @@ $(DIR_OUT)/$(OUT) : $(DIR_IN)/$(OUT).cpp
 #Run your program
 run : $(DIR_OUT)/$(OUT)
 	export OMPI_MCA_osc=pt2pt; \
-	mpirun -np $(NUM_UNITS) $(DIR_OUT)/$(OUT)
+	for i in `seq 100`; do mpirun -np $(NUM_UNITS) $(DIR_OUT)/$(OUT); done
 
 #Remove your executable
 clean :
