@@ -1,8 +1,6 @@
 #ifndef LOCK_TAS_H
 #define LOCK_TAS_H
 
-#include "lock_inf.h"
-
 namespace dds
 {
 
@@ -30,7 +28,7 @@ dds::lock_tas::lock_tas()
 	// allocate global (or shared) memory for flag
 	flag = BCL::alloc<bool>(1);
 
-	// initialize flag with 0
+	// initialize flag with false
 	if (BCL::rank() == MASTER_RANK)
 		BCL::store(false, flag);
 	else // if (BCL::rank() != MASTER_RANK)
