@@ -30,7 +30,7 @@ $(DIR_OUT)/$(OUT) : $(DIR_IN)/$(OUT).cpp
 #Run your program
 run : $(DIR_OUT)/$(OUT)
 	export OMPI_MCA_osc=pt2pt; \
-	for i in `seq 100`; do mpirun -np $(NUM_UNITS) $(DIR_OUT)/$(OUT); done
+	mpirun -np $(NUM_UNITS) $(DIR_OUT)/$(OUT)
 
 #Remove your executable
 clean :
