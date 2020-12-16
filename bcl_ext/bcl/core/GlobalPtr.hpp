@@ -81,7 +81,8 @@ struct GlobalPtr {
     return !(*this == null);
   }
 
-	bool operator<(const GlobalPtr& other) const {
+	bool operator<(const GlobalPtr& other) const
+	{
 		if (rank < other.rank)
 			return true;
 		else if (rank > other.rank)
@@ -95,7 +96,8 @@ struct GlobalPtr {
 		}
 	}
 
-	bool operator>(const GlobalPtr& other) const {
+	bool operator>(const GlobalPtr& other) const
+	{
 		if (rank < other.rank)
 			return false;
 		else if (rank > other.rank)
@@ -109,10 +111,14 @@ struct GlobalPtr {
 		}
 	}
 
-	bool operator<=(const GlobalPtr& other) const {
+	bool operator<=(const GlobalPtr& other) const
+	{
+		return !(*this > other);
 	}
 
-	bool operator>=(const GlobalPtr& other) const {
+	bool operator>=(const GlobalPtr& other) const 
+	{
+		return !(*this < other);
 	}
 
   /*
@@ -233,20 +239,16 @@ struct GlobalPtr {
     CallHandler(const BCL::GlobalPtr<U>& ptr) : ptr_(ptr) {}
 
     U* operator->() {
-      /*// *reinterpret_cast<U*>(obj_) = *ptr_;
-      BCL::rget(ptr_, reinterpret_cast<U*>(obj_), 1);
-      return reinterpret_cast<U*>(obj_);*/
-	    U *dang = new U;
-	    *dang = BCL::rget(ptr_);
-	    return dang;
+      *reinterpret_cast<U*>(obj_) = *ptr_;
+      // BCL::rget(ptr_, reinterpret_cast<U*>(obj_), 1);
+      return reinterpret_cast<U*>(obj_);
     }
 
     // TODO: does not currently support -> with const
     const U* operator->() const {
-      /*// *reinterpret_cast<U*>(obj_) = *ptr_;
+      // *reinterpret_cast<U*>(obj_) = *ptr_;
       BCL::rget(ptr_, reinterpret_cast<U*>(obj_), 1);
-      return reinterpret_cast<U*>(obj_);*/
-	    printf("CP2\n");
+      return reinterpret_cast<U*>(obj_);
     }
 
     ~CallHandler() {
