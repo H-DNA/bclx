@@ -1,7 +1,7 @@
 #ifndef STACK_BLOCKING_H
 #define STACK_BLOCKING_H
 
-#include "../../lock/lock_mcs.h"
+#include "../../lock/inc/lock_mcs.h"
 
 namespace dds
 {

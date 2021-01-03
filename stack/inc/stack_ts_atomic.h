@@ -2,7 +2,6 @@
 #define STACK_TS_ATOMIC_H
 
 #include <unistd.h>
-#include "../../lib/utility.h"
 
 namespace dds
 {

@@ -2,7 +2,6 @@
 #define STACK_TS_CAS_H
 
 #include <unistd.h>
-#include "../../lib/utility.h"
 
 namespace dds
 {

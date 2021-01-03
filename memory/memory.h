@@ -2,7 +2,6 @@
 #define MEMORY_H
 
 #include "../config.h"		//Configurations
-#include "../lib/utility.h"	//Utilities
 
 #include "memory_hp.h"		//Using Hazard Pointers
 
