@@ -1,6 +1,8 @@
 #ifndef MEMORY_DANG3_H
 #define MEMORY_DANG3_H
 
+#include <cstdint>	// uint64_t
+
 namespace dds
 {
 
@@ -13,13 +15,13 @@ namespace dang3
         public:
                 memory();
                 ~memory();
-		gptr<T> malloc();		//allocates global memory
-		void free(const gptr<T> &);	//deallocates global memory
+		gptr<T> malloc();		// allocates global memory
+		void free(const gptr<T>&);	// deallocates global memory
 
 	private:
-                gptr<T>		pool;		//allocates global memory
-                gptr<T>		poolRep;	//deallocates global memory
-                uint64_t	capacity;	//contains global memory capacity (bytes)
+                gptr<T>		pool;		// allocates global memory
+                gptr<T>		pool_rep;	// deallocates global memory
+                uint64_t	capacity;	// contains global memory capacity (bytes)
         };
 
 } /* namespace dang3 */
@@ -32,28 +34,28 @@ dds::dang3::memory<T>::memory()
 	if (BCL::rank() == MASTER_UNIT)
 		mem_manager = "DANG3";
 
-	pool = poolRep = BCL::alloc<T>(ELEMS_PER_UNIT);
+	pool = pool_rep = BCL::alloc<T>(ELEMS_PER_UNIT);
         capacity = pool.ptr + ELEMS_PER_UNIT * sizeof(T);
 }
 
 template <typename T>
 dds::dang3::memory<T>::~memory()
 {
-        BCL::dealloc<T>(poolRep);
+        BCL::dealloc<T>(pool_rep);
 }
 
 template <typename T>
 dds::gptr<T> dds::dang3::memory<T>::malloc()
 {
-        //determine the global address of the new element
+        // determine the global address of the new element
         if (pool.ptr < capacity)
 		return pool++;
-	else //if (pool.ptr == capacity)
+	else // if (pool.ptr == capacity)
 		return nullptr;
 }
 
 template <typename T>
-void dds::dang3::memory<T>::free(const gptr<T> &addr)
+void dds::dang3::memory<T>::free(const gptr<T>& addr)
 {
 	//do nothing
 }

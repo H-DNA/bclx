@@ -1,6 +1,11 @@
 #ifndef MEMORY_DANG_H
 #define MEMORY_DANG_H
 
+#include <cstdint>	// uint_8, uint_32, uint64_t
+#include <vector>	// std::vector
+#include <algorithm>	// std::sort, std::unique, std::binary_search
+#include <utility>	// std::move
+
 namespace dds
 {
 
@@ -18,24 +23,24 @@ namespace dang
 	class memory
 	{
 	public:
-		gptr<gptr<T>>	hp;		//Hazard pointer
+		gptr<gptr<T>>	hp;		// Hazard pointer
 
 		memory();
 		~memory();
-                gptr<T> malloc();		//allocates global memory
-                void free(const gptr<T> &);	//deallocates global memory
+                gptr<T> malloc();		// allocates global memory
+                void free(const gptr<T>&);	// deallocates global memory
 
 	private:
-		const gptr<T>   NULL_PTR        = nullptr;
-		const uint64_t  HPS_PER_UNIT    = 1;
-		#define         HP_TOTAL        BCL::nprocs() * HPS_PER_UNIT
-		#define         HP_WINDOW       HP_TOTAL * 2
+		const gptr<T>		NULL_PTR	= nullptr;
+		const uint8_t		HPS_PER_UNIT	= 1;
+		const uint64_t		HP_TOTAL	= BCL::nprocs() * HPS_PER_UNIT;
+		const uint64_t		HP_WINDOW	= HP_TOTAL * 2;
 
-                gptr<elem_dang<T>>		pool;           //allocates global memory
-                gptr<elem_dang<T>>		poolRep;    	//deallocates global memory
-                uint64_t			capacity;       //contains global memory capacity (bytes)
-		sds::list<gptr<T>>		listAlloc;	//contains allocated elems
-		sds::list<gptr<T>>		listRecla;	//contains reclaimed elems
+                gptr<elem_dang<T>>	pool;           // allocates global memory
+                gptr<elem_dang<T>>	pool_rep;    	// deallocates global memory
+                uint64_t		capacity;       // contains global memory capacity (bytes)
+		std::vector<gptr<T>>	list_alloc;	// contains allocated elems
+		std::vector<gptr<T>>	list_recla;	// contains reclaimed elems
 
 		void scan();
 	};
@@ -53,127 +58,128 @@ dds::dang::memory<T>::memory()
         hp = BCL::alloc<gptr<T>>(HPS_PER_UNIT);
         BCL::store(NULL_PTR, hp);
 
-        pool = poolRep = BCL::alloc<elem_dang<T>>(ELEMS_PER_UNIT);
+        pool = pool_rep = BCL::alloc<elem_dang<T>>(ELEMS_PER_UNIT);
         capacity = pool.ptr + ELEMS_PER_UNIT * sizeof(elem_dang<T>);
+
+	list_alloc.reserve(HP_WINDOW);
+	list_recla.reserve(HP_WINDOW);
 }
 
 template <typename T>
 dds::dang::memory<T>::~memory()
 {
-        BCL::dealloc<elem_dang<T>>(poolRep);
+        BCL::dealloc<elem_dang<T>>(pool_rep);
 	BCL::dealloc<gptr<T>>(hp);
 }
 
 template <typename T>
 dds::gptr<T> dds::dang::memory<T>::malloc()
 {
-	sds::elem<gptr<T>>	*addr;
-	gptr<T>			res;
-	gptr<bool>		temp;
-
-        //determine the global address of the new element
-	if (listRecla.remove(addr) != EMPTY)
+        // determine the global address of the new element
+	if (!list_recla.empty())
 	{
-		//tracing
+		// tracing
 		#ifdef  TRACING
 			++elem_re;
 		#endif
 
-		temp = {addr->value.rank, addr->value.ptr - sizeof(temp.rank)};
+		gptr<T> addr = list_recla.back();
+		list_recla.pop_back();
+		gptr<bool> temp = {addr.rank, addr.ptr - sizeof(addr.rank)};
 		BCL::store(true, temp);
-
-		res = addr->value;
-		listAlloc.insert(addr);
+		list_alloc.push_back(addr);
+		return addr;
 	}
-	else //the list of reclaimed global memory is empty
+	else // the list of reclaimed global memory is empty
 	{
                 if (pool.ptr < capacity)
 		{
-			temp = {pool.rank, pool.ptr};
+			gptr<bool> temp = {pool.rank, pool.ptr};
 			BCL::store(true, temp);
-
-			res = {pool.rank, pool.ptr + sizeof(res.rank)};
-			listAlloc.insert(res);
-
+			gptr<T> addr = {pool.rank, pool.ptr + sizeof(pool.rank)};
+			list_alloc.push_back(addr);
 			pool++;
+			return addr;
 		}
-                else //if (pool.ptr == capacity)
+                else // if (pool.ptr == capacity)
                 {
-                        //try one more to reclaim global memory
+                        // try one more to reclaim global memory
                         scan();
-                        if (listRecla.remove(addr) != EMPTY)
+                        if (!list_recla.empty())
                         {
-				//tracing
+				// tracing
 				#ifdef  TRACING
 					++elem_re;
 				#endif
 
-				temp = {addr->value.rank, addr->value.ptr - sizeof(temp.rank)};
+				gptr<T> addr = list_recla.back();
+				list_recla.pop_back();			
+				gptr<bool> temp = {addr.rank, addr.ptr - sizeof(addr.rank)};
                         	BCL::store(true, temp);
-
-				res = addr->value;
-                        	listAlloc.insert(addr);
+                        	list_alloc.push_back(addr);
+				return addr;
 			}
-                        else //the list of reclaimed global memory is empty
-                                res = nullptr;
+                        else // the list of reclaimed global memory is empty
+				return nullptr;
                 }
 	}
-
-	return res;
 }
 
 template <typename T>
-void dds::dang::memory<T>::free(const gptr<T> &addr)
+void dds::dang::memory<T>::free(const gptr<T>& addr)
 {
 	gptr<bool> temp = {addr.rank, addr.ptr - sizeof(addr.rank)};
 	BCL::aput_sync(false, temp);
 
-        if (listAlloc.size() >= HP_WINDOW)
+        if (list_alloc.size() >= HP_WINDOW)
                 scan();
 }
 
 template <typename T>
 void dds::dang::memory<T>::scan()
 {
-	uint64_t 		p = 0;			//contains the number of elems in @plist
-	gptr<T> 		hptr,			//Temporary variable
-				plist[HP_TOTAL];	//contains non-null hazard pointers
-	sds::list<gptr<T>>	new_dlist;		//is dlist after finishing the Scan function
-	gptr<gptr<T>> 		hpTemp;			//Temporary variable
-	sds::elem<gptr<T>>      *addr;			//Temporary variable
-	gptr<elem_dang<T>>	temp;
+	std::vector<gptr<T>>	plist;		// contains non-null hazard pointers
+	std::vector<gptr<T>>	new_dlist;	// is dlist after finishing the Scan function
+	gptr<gptr<T>> 		hp_temp;	// Temporary variable
+	gptr<T>			addr;		// Temporary variable
+	gptr<elem_dang<T>>	temp;		// Temporary variable
 
-	//Stage 1
-	hpTemp.ptr = hp.ptr;
+	plist.reserve(HP_TOTAL);
+	new_dlist.reserve(HP_TOTAL);
+
+	// Stage 1
+	hp_temp.ptr = hp.ptr;
 	for (uint64_t i = 0; i < BCL::nprocs(); ++i)
 	{
-		hpTemp.rank = i;
+		hp_temp.rank = i;
 		for (uint32_t j = 0; j < HPS_PER_UNIT; ++j)
 		{
-			hptr = BCL::aget_sync(hpTemp);
-			if (hptr != nullptr)
-				plist[p++] = hptr;
-			++hpTemp;
+			addr = BCL::aget_sync(hp_temp);
+			if (addr != nullptr)
+				plist.push_back(addr);
+			++hp_temp;
 		}
 	}
 	
-	//Stage 2
-	sds::heap_sort(plist, p);
-	sds::remove_duplicates(plist, p);
+	// Stage 2
+	std::sort(plist.begin(), plist.end());
+	plist.resize(std::unique(plist.begin(), plist.end()) - plist.begin());
 
-	//Stage 3
+	// Stage 3
 	temp.rank = BCL::rank();
-        while (listAlloc.remove(addr) != EMPTY)
+        while (!list_alloc.empty())
 	{
-		temp.ptr = addr->value.ptr - sizeof(addr->value.rank);
-		if (BCL::aget_sync(temp).taken || sds::binary_search(addr->value, plist, p))
-			new_dlist.insert(addr);
+		addr = list_alloc.back();
+		list_alloc.pop_back();
+		temp.ptr = addr.ptr - sizeof(addr.rank);
+		if (BCL::aget_sync(temp).taken || std::binary_search(plist.begin(), plist.end(), addr))
+			new_dlist.push_back(addr);
 		else
-			listRecla.insert(addr);
+			list_recla.push_back(addr);
 	}
 
-	//Stage 4
-	listAlloc.assign(new_dlist);
+	// Stage 4
+	list_alloc = std::move(new_dlist);
 }
 
 #endif /* MEMORY_DANG_H */
