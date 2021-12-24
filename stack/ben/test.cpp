@@ -16,7 +16,7 @@ int main()
 
 	stack<uint32_t> myStack;
 
-	for (i = 0; i < ELEM_PER_UNIT; ++i)
+	for (i = 0; i < ELEMS_PER_UNIT; ++i)
 	{
 		value = (rank() + 1) * 10 + i;
 		myStack.push(value);
@@ -27,9 +27,9 @@ int main()
 		printf("----------------------------------------------------------\n");
 	barrier();
 
-	for (i = 0; i < ELEM_PER_UNIT; ++i)
+	for (i = 0; i < ELEMS_PER_UNIT; ++i)
 	{
-		state = myStack.pop(&value);
+		state = myStack.pop(value);
 		if (state == NON_EMPTY)
 			printf("[%lu]%d\n", rank(), value);
                 else //if (state == EMPTY)
@@ -41,7 +41,7 @@ int main()
                	printf("----------------------------------------------------------\n");
 	barrier();
 
-	for (i = 0; i < ELEM_PER_UNIT; ++i)
+	for (i = 0; i < ELEMS_PER_UNIT; ++i)
 	{
 		value = (rank() + 1) * 100 + i;
 		myStack.push(value);
