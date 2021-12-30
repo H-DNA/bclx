@@ -1,24 +1,24 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include <string>
-#include <cmath>
+#include <string>	// std::string...
+#include <cmath>	// exp2l...
 
 namespace dds
 {
 
 	/* Configurations */
 	#define	TRACING
-	#define	MEM_REC
+	#define	MEM_EBR2
 	//#define	DEBUGGING
 
-	const uint64_t	ELEMS_PER_UNIT	=	exp2l(15);
+	const uint64_t	TOTAL_OPS	=	exp2l(15);
 	const uint32_t	WORKLOAD	=	1;		//us
 	const uint32_t	TSS_INTERVAL	=	1;		//us
 	const uint32_t  MASTER_UNIT     =       0;
 
 	/* Aliases */
-	template <typename T>
+	template<typename T>
 	using gptr = BCL::GlobalPtr<T>;
 
         /* Constants */

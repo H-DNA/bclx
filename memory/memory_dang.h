@@ -12,23 +12,28 @@ namespace dds
 namespace dang
 {
 
-	template <typename T>
+	template<typename T>
 	struct elem_dang
 	{
 		bool 	taken;
 		T	elemD;
 	};
 
-	template <typename T>
+	template<typename T>
 	class memory
 	{
 	public:
-		gptr<gptr<T>>	hp;		// Hazard pointer
+		std::vector<gptr<T>>	list_recla;	// contain reclaimed elems
 
 		memory();
 		~memory();
-                gptr<T> malloc();		// allocates global memory
-                void free(const gptr<T>&);	// deallocates global memory
+                gptr<T> malloc();		// allocate global memory
+                void free(const gptr<T>&);	// deallocate global memory
+		void op_begin();		// indicate the beginning of a concurrent operation
+		void op_end();			// indicate the end of a concurrent operation
+		bool try_reserve(const gptr<T>&,// try to protect a global pointer from reclamation
+				const gptr<gptr<T>>&);
+		void unreserve(const gptr<T>&);	// stop protecting a global pointer
 
 	private:
 		const gptr<T>		NULL_PTR	= nullptr;
@@ -36,11 +41,11 @@ namespace dang
 		const uint64_t		HP_TOTAL	= BCL::nprocs() * HPS_PER_UNIT;
 		const uint64_t		HP_WINDOW	= HP_TOTAL * 2;
 
-                gptr<elem_dang<T>>	pool;           // allocates global memory
-                gptr<elem_dang<T>>	pool_rep;    	// deallocates global memory
-                uint64_t		capacity;       // contains global memory capacity (bytes)
-		std::vector<gptr<T>>	list_alloc;	// contains allocated elems
-		std::vector<gptr<T>>	list_recla;	// contains reclaimed elems
+                gptr<elem_dang<T>>	pool;           // allocate global memory
+                gptr<elem_dang<T>>	pool_rep;    	// deallocate global memory
+                uint64_t		capacity;       // contain global memory capacity (bytes)
+		gptr<gptr<T>>		hp;		// be an array of hazard pointers
+		std::vector<gptr<T>>	list_alloc;	// contain allocated elems
 
 		void scan();
 	};
@@ -49,7 +54,7 @@ namespace dang
 
 } /* namespace dds */
 
-template <typename T>
+template<typename T>
 dds::dang::memory<T>::memory()
 {
 	if (BCL::rank() == MASTER_UNIT)
@@ -58,21 +63,21 @@ dds::dang::memory<T>::memory()
         hp = BCL::alloc<gptr<T>>(HPS_PER_UNIT);
         BCL::store(NULL_PTR, hp);
 
-        pool = pool_rep = BCL::alloc<elem_dang<T>>(ELEMS_PER_UNIT);
-        capacity = pool.ptr + ELEMS_PER_UNIT * sizeof(elem_dang<T>);
+        pool = pool_rep = BCL::alloc<elem_dang<T>>(TOTAL_OPS);
+        capacity = pool.ptr + TOTAL_OPS * sizeof(elem_dang<T>);
 
 	list_alloc.reserve(HP_WINDOW);
 	list_recla.reserve(HP_WINDOW);
 }
 
-template <typename T>
+template<typename T>
 dds::dang::memory<T>::~memory()
 {
         BCL::dealloc<elem_dang<T>>(pool_rep);
 	BCL::dealloc<gptr<T>>(hp);
 }
 
-template <typename T>
+template<typename T>
 dds::gptr<T> dds::dang::memory<T>::malloc()
 {
         // determine the global address of the new element
@@ -125,7 +130,7 @@ dds::gptr<T> dds::dang::memory<T>::malloc()
 	}
 }
 
-template <typename T>
+template<typename T>
 void dds::dang::memory<T>::free(const gptr<T>& addr)
 {
 	gptr<bool> temp = {addr.rank, addr.ptr - sizeof(addr.rank)};
@@ -135,7 +140,50 @@ void dds::dang::memory<T>::free(const gptr<T>& addr)
                 scan();
 }
 
-template <typename T>
+template<typename T>
+void dds::dang::memory<T>::op_begin()
+{
+	/* No-op */
+}
+
+template<typename T>
+void dds::dang::memory<T>::op_end()
+{
+	/* No-op */
+}
+
+template<typename T>
+bool dds::dang::memory<T>::try_reserve(const gptr<T>& addr, const gptr<gptr<T>>& comp)
+{
+	gptr<gptr<T>> hp_temp = hp;
+	for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
+		if (BCL::aget_sync(hp_temp) == NULL_PTR)
+		{
+			BCL::aput_sync(addr, hp_temp);
+			if (addr == BCL::aget_sync(comp))
+				return true;
+			return false;
+		}
+		else // if (BCL::aget_sync(hp_temp) != NULL_PTR)
+			++hp_temp;
+	return false;
+}
+
+template<typename T>
+void dds::dang::memory<T>::unreserve(const gptr<T>& addr)
+{
+	gptr<gptr<T>> hp_temp = hp;
+	for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
+		if (BCL::aget_sync(hp_temp) == addr)
+		{
+			BCL::aget_sync(NULL_PTR, hp_temp);
+			return;
+		}
+		else // if (BCL::aget_sync(hp_temp) != addr)
+			++hp_temp;
+}
+
+template<typename T>
 void dds::dang::memory<T>::scan()
 {
 	std::vector<gptr<T>>	plist;		// contains non-null hazard pointers

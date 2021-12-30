@@ -20,7 +20,7 @@ int main()
 	BCL::init();
 
         stack<uint32_t> myStack;
-	num_ops = ELEMS_PER_UNIT / BCL::nprocs();
+	num_ops = TOTAL_OPS / BCL::nprocs();
 
 	start = MPI_Wtime();
 
@@ -53,7 +53,7 @@ int main()
 		printf("*\tSTACK\t\t:\t%s\t\t\t*\n", stack_name.c_str());
 		printf("*\tMEMORY\t\t:\t%s\t\t\t*\n", mem_manager.c_str());
                 printf("*\tEXEC_TIME\t:\t%f (s)\t\t*\n", total_time);
-                printf("*\tTHROUGHPUT\t:\t%f (ops/s)\t*\n", ELEMS_PER_UNIT / total_time);
+                printf("*\tTHROUGHPUT\t:\t%f (ops/s)\t*\n", TOTAL_OPS / total_time);
                 printf("*********************************************************\n");
 	}
 

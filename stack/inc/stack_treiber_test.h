@@ -10,36 +10,38 @@ namespace ts_test
 {
 
 	/* Macros */
-	#ifdef MEM_REC
+	#ifdef 		MEM_HP
 		using namespace hp;
+	#elif defined	MEM_EBR2
+		using namespace ebr2;	
 	#else
 		using namespace dang3;
 	#endif
 
 	/* Data types */
-        template <typename T>
+        template<typename T>
         struct elem
         {
                 gptr<elem<T>>   next;
                 T               value;
         };
 
-	template <typename T>
+	template<typename T>
 	class stack
 	{
 	public:
-		stack();			//collective
-		stack(const uint64_t &num);	//collective
-		~stack();			//collective
-		bool push(const T &value);	//non-collective
-		bool pop(T &value);		//non-collective
-		void print();			//collective
+		stack();			// collective
+		stack(const uint64_t &num);	// collective
+		~stack();			// collective
+		bool push(const T &value);	// non-collective
+		bool pop(T &value);		// non-collective
+		void print();			// collective
 
 	private:
-        	const gptr<elem<T>> 	NULL_PTR = nullptr; 	//is a null constant
+        	const gptr<elem<T>> 	NULL_PTR = nullptr; 	// be a null constant
 
-		memory<elem<T>>		mem;	//handles global memory
-                gptr<gptr<elem<T>>>	top;	//points to global address of the top
+		memory<elem<T>>		mem;	// manage global memory
+                gptr<gptr<elem<T>>>	top;	// point to global address of the top
 		uint64_t		bk_i;
 
 		bool push_fill(const T &value);
@@ -52,7 +54,7 @@ namespace ts_test
 template<typename T>
 dds::ts_test::stack<T>::stack()
 {
-	//synchronize
+	// synchronize
 	BCL::barrier();
 
 	top = BCL::alloc<gptr<elem<T>>>(1);
@@ -65,14 +67,14 @@ dds::ts_test::stack<T>::stack()
 		top.rank = MASTER_UNIT;
 	bk_i = exp2l(0);
 
-	//synchronize
+	// synchronize
 	BCL::barrier();
 }
 
 template<typename T>
 dds::ts_test::stack<T>::stack(const uint64_t &num)
 {
-	//synchronize
+	// synchronize
 	BCL::barrier();
 
 	top = BCL::alloc<gptr<elem<T>>>(1);
@@ -87,7 +89,7 @@ dds::ts_test::stack<T>::stack(const uint64_t &num)
 	else
 		top.rank = MASTER_UNIT;
 
-        //synchronize
+        // synchronize
         BCL::barrier();
 }
 
@@ -106,16 +108,16 @@ bool dds::ts_test::stack<T>::push(const T &value)
 				newTopAddr;
 	backoff::backoff        bk(bk_i, bk_max);
 
-	//tracing
+	// tracing
 	#ifdef	TRACING
 		double		start;
 	#endif
 
-	//allocate global memory to the new elem
+	// allocate global memory to the new elem
 	newTopAddr = mem.malloc();
 	if (newTopAddr == nullptr)
 	{
-		//tracing
+		// tracing
 		#ifdef	TRACING
 			printf("The stack is FULL\n");
 			++fail_cs;
@@ -126,25 +128,21 @@ bool dds::ts_test::stack<T>::push(const T &value)
 
 	while (true)
 	{
-		//tracing
+		// tracing
 		#ifdef	TRACING
 			start = MPI_Wtime();
 		#endif
 
-		//get top (from global memory to local memory)
+		// get top (from global memory to local memory)
 		oldTopAddr = BCL::aget_sync(top);
 
-		//update new element (global memory)
-		#ifdef MEM_REC
-                	BCL::rput_sync({oldTopAddr, value}, newTopAddr);
-		#else
-                	BCL::store({oldTopAddr, value}, newTopAddr);
-		#endif
+		// update new element (global memory)
+                BCL::rput_sync({oldTopAddr, value}, newTopAddr);
 
-		//update top (global memory)
+		// update top (global memory)
 		if (BCL::cas_sync(top, oldTopAddr, newTopAddr) == oldTopAddr)
 		{
-			//tracing
+			// tracing
 			#ifdef	TRACING
 				++succ_cs;
 			#endif
@@ -154,11 +152,11 @@ bool dds::ts_test::stack<T>::push(const T &value)
 
 			return true;
 		}
-		else //if (BCL::cas_sync(top, oldTopAddr, newTopAddr) != oldTopAddr)
+		else // if (BCL::cas_sync(top, oldTopAddr, newTopAddr) != oldTopAddr)
 		{
 			bk_i = bk.delay_dbl();
 
-			//tracing
+			// tracing
 			#ifdef	TRACING
 				fail_time += (MPI_Wtime() - start);
 				++fail_cs;
@@ -170,34 +168,31 @@ bool dds::ts_test::stack<T>::push(const T &value)
 template<typename T>
 bool dds::ts_test::stack<T>::pop(T &value)
 {
+	// begin a nonblocking operation
+	mem.op_begin();
+
 	elem<T> 		oldTopVal;
-	gptr<elem<T>> 		oldTopAddr,
-				oldTopAddr2;
+	gptr<elem<T>> 		oldTopAddr;
 	backoff::backoff        bk(bk_i, bk_max);
 
-	//tracing
+	// tracing
 	#ifdef  TRACING
 		double		start;
 	#endif
 
 	while (true)
 	{
-		//tracing
+		// tracing
 		#ifdef	TRACING
 			start = MPI_Wtime();
 		#endif
 
-		//get top (from global memory to local memory)
+		// get top (from global memory to local memory)
 		oldTopAddr = BCL::aget_sync(top);
 
 		if (oldTopAddr == nullptr)
 		{
-			//update hazard pointers
-			#ifdef MEM_REC
-        			BCL::aput_sync(NULL_PTR, mem.hp);
-			#endif
-
-			//tracing
+			// tracing
 			#ifdef	TRACING
 				printf("The stack is EMPTY\n");
 				++succ_cs;
@@ -206,21 +201,25 @@ bool dds::ts_test::stack<T>::pop(T &value)
 			return false;
 		}
 
-		//update hazard pointers
-		#ifdef MEM_REC
-			BCL::aput_sync(oldTopAddr, mem.hp);
-			oldTopAddr2 = BCL::aget_sync(top);
-			if (oldTopAddr != oldTopAddr2)
-				continue;
-		#endif
+		// try to reserve top
+		if (!mem.try_reserve(oldTopAddr, top))
+		{
+			// unreserve top
+			mem.unreserve(oldTopAddr);
 
-		//get node (from global memory to local memory)
+			continue;
+		}
+
+		// get node (from global memory to local memory)
 		oldTopVal = BCL::rget_sync(oldTopAddr);
 
-		//update top
+		// update top
 		if (BCL::cas_sync(top, oldTopAddr, oldTopVal.next) == oldTopAddr)
 		{
-			//tracing
+			// unreserve top
+			mem.unreserve(oldTopAddr);
+
+			// tracing
 			#ifdef	TRACING
 				++succ_cs;
 			#endif
@@ -230,8 +229,11 @@ bool dds::ts_test::stack<T>::pop(T &value)
 
 			break;
 		}
-		else //if (BCL::cas_sync(top, oldTopAddr, oldTopVal.next) != oldTopAddr)
+		else // if (BCL::cas_sync(top, oldTopAddr, oldTopVal.next) != oldTopAddr)
 		{
+			// unreserve top
+			mem.unreserve(oldTopAddr);
+
 			bk_i = bk.delay_dbl();
 
 			//tracing
@@ -242,16 +244,14 @@ bool dds::ts_test::stack<T>::pop(T &value)
 		}
 	}
 
-	//update hazard pointers
-	#ifdef MEM_REC
-		BCL::aput_sync(NULL_PTR, mem.hp);
-	#endif
-
-	//return the value of the popped elem
+	// return the value of the popped elem
 	value = oldTopVal.value;
 
-	//deallocate global memory of the popped elem
+	// deallocate global memory of the popped elem
 	mem.free(oldTopAddr);
+
+	// end a nonblocking operation
+	mem.op_end();
 
 	return true;
 }
@@ -259,7 +259,7 @@ bool dds::ts_test::stack<T>::pop(T &value)
 template<typename T>
 void dds::ts_test::stack<T>::print()
 {
-	//synchronize
+	// synchronize
 	BCL::barrier();
 
 	if (BCL::rank() == MASTER_UNIT)
@@ -275,7 +275,7 @@ void dds::ts_test::stack<T>::print()
 		}
 	}
 
-	//synchronize
+	// synchronize
 	BCL::barrier();
 }
 
@@ -287,18 +287,18 @@ bool dds::ts_test::stack<T>::push_fill(const T &value)
 		gptr<elem<T>>		oldTopAddr,
 					newTopAddr;
 
-		//allocate global memory to the new elem
+		// allocate global memory to the new elem
 		newTopAddr = mem.malloc();
 		if (newTopAddr == nullptr)
 			return false;
 
-		//get top (from global memory to local memory)
+		// get top (from global memory to local memory)
 		oldTopAddr = BCL::load(top);
 
-		//update new element (global memory)
+		// update new element (global memory)
 		BCL::store({oldTopAddr, value}, newTopAddr);
 
-		//update top (global memory)
+		// update top (global memory)
 		BCL::store(newTopAddr, top);
 		
 		return true;

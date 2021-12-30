@@ -41,7 +41,7 @@ int main()
         right = log2l(bk_max);
 
 	stack<uint32_t> *my_stack;
-	num_ops = ELEMS_PER_UNIT / BCL::nprocs();
+	num_ops = TOTAL_OPS / BCL::nprocs();
 
 	//Step 1: determining the potential search space for the backoff range
 	if (BCL::rank() == MASTER_UNIT)
@@ -55,14 +55,14 @@ int main()
 	{
 		if (total_time_mid == 0)
 		{
-			my_stack = new stack<uint32_t>(ELEMS_PER_UNIT / 2);
+			my_stack = new stack<uint32_t>(TOTAL_OPS / 2);
 			total_time_mid = work_time(my_stack, num_ops, left, mid);
 			delete my_stack;
 		}
 
 		if (total_time_right == 0)
 		{
-			my_stack = new stack<uint32_t>(ELEMS_PER_UNIT / 2);
+			my_stack = new stack<uint32_t>(TOTAL_OPS / 2);
 			total_time_right = work_time(my_stack, num_ops, left, right);
 			delete my_stack;
 		}
@@ -105,7 +105,7 @@ int main()
 	{
 		if (total_time_array[mid - 1] == 0)
 		{
-			my_stack = new stack<uint32_t>(ELEMS_PER_UNIT / 2);
+			my_stack = new stack<uint32_t>(TOTAL_OPS / 2);
 			total_time_array[mid - 1] = work_time(my_stack, num_ops, left, mid - 1);
 			delete my_stack;
 		}
@@ -147,14 +147,14 @@ int main()
 		{
 			if (total_time_array[mid - 1] == 0)
 			{
-				my_stack = new stack<uint32_t>(ELEMS_PER_UNIT / 2);
+				my_stack = new stack<uint32_t>(TOTAL_OPS / 2);
 				total_time_array[mid - 1] = work_time(my_stack, num_ops, mid - 1, right);
 				delete my_stack;
 			}
 
 			if (mid < right && total_time_array[mid + 1] == 0)
 			{
-				my_stack = new stack<uint32_t>(ELEMS_PER_UNIT / 2);
+				my_stack = new stack<uint32_t>(TOTAL_OPS / 2);
 				total_time_array[mid + 1] = work_time(my_stack, num_ops, mid + 1, right);
 				delete my_stack;
 			}
@@ -202,7 +202,7 @@ int main()
 		std::cout << "*\tSTACK\t\t:\t" << stack_name.c_str() << "\t\t\t*\n";
 		std::cout << "*\tMEMORY\t\t:\t" <<  mem_manager.c_str() << "\t\t\t*\n";
 		std::cout << "*\tEXEC_TIME\t:\t" << total_time_mid << " (s)\t\t*\n";
-		std::cout << "*\tTHROUGHPUT\t:\t" << ELEMS_PER_UNIT / total_time_mid << " (ops/s)\t\t*\n";
+		std::cout << "*\tTHROUGHPUT\t:\t" << TOTAL_OPS / total_time_mid << " (ops/s)\t\t*\n";
 		std::cout << "*********************************************************\n";
         }
 

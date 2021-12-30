@@ -25,8 +25,8 @@ int main()
 		return -1;
 	}
 
-        stack<uint32_t> myStack(ELEMS_PER_UNIT / 2);
-	num_ops = ELEMS_PER_UNIT / BCL::nprocs();
+        stack<uint32_t> myStack(TOTAL_OPS / 2);
+	num_ops = TOTAL_OPS / BCL::nprocs();
 
 	start = MPI_Wtime();
 
@@ -70,7 +70,7 @@ int main()
 		printf("*\tSTACK\t\t:\t%s\t\t\t*\n", stack_name.c_str());
 		printf("*\tMEMORY\t\t:\t%s\t\t\t*\n", mem_manager.c_str());
 		printf("*\tEXEC_TIME\t:\t%f (s)\t\t*\n", total_time);
-		printf("*\tTHROUGHPUT\t:\t%f (ops/s)\t*\n", ELEMS_PER_UNIT / total_time);
+		printf("*\tTHROUGHPUT\t:\t%f (ops/s)\t*\n", TOTAL_OPS / total_time);
                 printf("*********************************************************\n");
 	}
 
@@ -84,6 +84,8 @@ int main()
 		double		node_time,
 				total_fail_time;
 		ta::na          na;
+
+		elem_re += myStack.mem.list_recla.size();
 
 		if (na.node_num == 1)
 			printf("[Proc %lu]%f (s), %f (s), %lu, %lu, %lu, %lu, %lu\n", BCL::rank(),
