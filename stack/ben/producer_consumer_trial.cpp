@@ -6,7 +6,7 @@
 #include "../../lib/ta.h"
 
 using namespace dds;
-using namespace dds::ebs2_na;
+using namespace dds::ts;
 
 template <typename T>
 inline double work_time(stack<T> *my_stack, const uint64_t &num_ops, const uint32_t &left, const uint32_t &right);
