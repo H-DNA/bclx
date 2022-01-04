@@ -12,9 +12,11 @@ namespace ts
 	/* Macros */
 	#ifdef		MEM_HP
 		using namespace hp;
+	#elif defined	MEM_EBR
+		using namespace ebr;
 	#elif defined	MEM_EBR2
 		using namespace ebr2;
-	#elif defined	DANG
+	#elif defined	MEM_DANG
 		using namespace dang;
 	#else
 		using namespace dang3;
@@ -196,17 +198,15 @@ bool dds::ts::stack<T>::pop(T &value)
 				++succ_cs;
 			#endif
 
+			// end a nonblocking operation
+			mem.op_end();
+
 			return false;
 		}
 
 		// try to reserve top
 		if (!mem.try_reserve(oldTopAddr, top))
-		{
-			// unreserve top
-			mem.unreserve(oldTopAddr);
-
 			continue;
-		}
 
 		// get node (from global memory to local memory)
 		oldTopVal = BCL::rget_sync(oldTopAddr);

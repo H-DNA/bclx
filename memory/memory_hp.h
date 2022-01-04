@@ -143,6 +143,7 @@ bool dds::hp::memory<T>::try_reserve(const gptr<T>& addr, const gptr<gptr<T>>& c
                 	BCL::aput_sync(addr, hp_temp);
 			if (addr == BCL::aget_sync(comp))
 				return true;
+			BCL::aput_sync(NULL_PTR, hp_temp);
 			return false;
 		}
 		else // if (BCL::aget_sync(hp_temp) != NULL_PTR)

@@ -50,20 +50,20 @@ namespace ebr2
 
 		void empty();
 	};
-}
+} /* namespace ebr2 */
 
 } /* namespace dds */
 
 template<typename T>
 dds::ebr2::memory<T>::memory()
 {
-	if (BCL::rank() == MASTER_UNIT)
-		mem_manager = "EBR2";
-
 	epoch = BCL::alloc<uint64_t>(1);
 	if (BCL::rank() == MASTER_UNIT)
+	{
+		mem_manager = "EBR2";
 		BCL::store(uint64_t(0), epoch);
-	else
+	}
+	else // if (BCL::rank() != MASTER_UNIT)
 		epoch.rank = MASTER_UNIT;
 
 	reservation = BCL::alloc<uint64_t>(1);

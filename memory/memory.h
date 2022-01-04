@@ -3,9 +3,11 @@
 
 #include "../config.h"		// Configurations
 
-#include "memory_hp.h"		// Using Hazard Pointers
+#include "memory_hp.h"		// Using Hazard Pointers [Michael, PODC'02 & TPDC'04]
 
-#include "memory_ebr2.h"	// Using Epoch-Based Reclamation (Scott's Group, PPoPP'18)
+#include "memory_ebr.h"		// Using Epoch-Based Reclamation [Fraser, PhD'04] & [Hart et al., IPDPS'06 & JPDC'07]
+
+#include "memory_ebr2.h"	// Using Epoch-Based Reclamation [Wen et al., PPoPP'18]
 
 #include "memory_dang.h"	// Using Data Locality
 
