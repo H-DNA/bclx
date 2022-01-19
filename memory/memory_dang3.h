@@ -1,6 +1,7 @@
 #ifndef MEMORY_DANG3_H
 #define MEMORY_DANG3_H
 
+#include <vector>	// std::vector...
 #include <cstdint>	// uint64_t...
 
 namespace dds
@@ -9,25 +10,27 @@ namespace dds
 namespace dang3
 {
 
-        template<typename T>
-        class memory
-        {
-        public:
-                memory();
-                ~memory();
-		gptr<T> malloc();		// allocate global memory
-		void free(const gptr<T>&);	// deallocate global memory
-		void op_begin();		// indicate the beginning of a concurrent operation
-		void op_end();			// indicate the end of a concurrent operation
-		bool try_reserve(const gptr<T>&,// try to protect a global pointer from reclamation
-				const gptr<gptr<T>>&);
-		void unreserve(const gptr<T>&);	// stop protecting a global pointer
+template<typename T>
+class memory
+{
+public:
+	std::vector<gptr<T>>	list_rec;	// contain reclaimed elems
 
-	private:
-                gptr<T>		pool;		// allocate global memory
-                gptr<T>		pool_rep;	// deallocate global memory
-                uint64_t	capacity;	// contain global memory capacity (bytes)
-        };
+	memory();
+	~memory();
+	gptr<T> malloc();			// allocate global memory
+	void free(const gptr<T>&);		// deallocate global memory
+	void op_begin();			// indicate the beginning of a concurrent operation
+	void op_end();				// indicate the end of a concurrent operation
+	bool try_reserve(gptr<T>&,		// try to protect a global pointer from reclamation
+			const gptr<gptr<T>>&);
+	void unreserve(const gptr<T>&);		// stop protecting a global pointer
+
+private:
+	gptr<T>		pool;			// allocate PGAS
+	gptr<T>		pool_rep;		// deallocate PGAS
+	uint64_t	capacity;		// contain global memory capacity (bytes)
+};
 
 } /* namespace dang3 */
 
@@ -60,7 +63,7 @@ dds::gptr<T> dds::dang3::memory<T>::malloc()
 }
 
 template<typename T>
-void dds::dang3::memory<T>::free(const gptr<T>& addr)
+void dds::dang3::memory<T>::free(const gptr<T>& ptr)
 {
 	/* No-op */
 }
@@ -78,13 +81,13 @@ void dds::dang3::memory<T>::op_end()
 }
 
 template<typename T>
-bool dds::dang3::memory<T>::try_reserve(const gptr<T>& addr, const gptr<gptr<T>>& comp)
+bool dds::dang3::memory<T>::try_reserve(gptr<T>& ptr, const gptr<gptr<T>>& atom)
 {
 	return true;
 }
 
 template<typename T>
-void dds::dang3::memory<T>::unreserve(const gptr<T>& addr)
+void dds::dang3::memory<T>::unreserve(const gptr<T>& ptr)
 {
 	/* No-op */
 }

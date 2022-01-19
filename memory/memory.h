@@ -9,9 +9,13 @@
 
 #include "memory_ebr2.h"	// Using Epoch-Based Reclamation [Wen et al., PPoPP'18]
 
+#include "memory_he.h"		// Using Hazard Eras [Ramalhete & Correia, SPAA'17]
+
+#include "memory_ibr.h"		// Using Interval-Based Reclamation (2GEIBR) [Wen et al., PPoPP'18]
+
 #include "memory_dang.h"	// Using Data Locality
 
-#include "memory_dang2.h"	// Using Hazard-Pointers-like Reclamation
+#include "memory_dang2.h"	// Using with Lock-Based Data Structures Only
 
 #include "memory_dang3.h"	// Using no Reclamation
 

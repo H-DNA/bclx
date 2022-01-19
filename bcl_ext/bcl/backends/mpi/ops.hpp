@@ -27,10 +27,6 @@ namespace BCL {
     MPI_Datatype type() const { return MPI_INT; }
   };
 
-  struct abstract_uint64_t : public virtual abstract_op <uint64_t> {
-    MPI_Datatype type() const { return MPI_UNSIGNED_LONG_LONG; }
-  };
-
   struct abstract_float : public virtual abstract_op <float> {
     MPI_Datatype type() const { return MPI_FLOAT; }
   };
@@ -38,6 +34,16 @@ namespace BCL {
   struct abstract_double : public virtual abstract_op <double> {
     MPI_Datatype type() const { return MPI_DOUBLE; }
   };
+
+struct abstract_uint32_t : public virtual abstract_op<uint32_t>
+{
+	MPI_Datatype type() const { return MPI_UINT32_T; }
+};
+
+struct abstract_uint64_t : public virtual abstract_op<uint64_t>
+{
+	MPI_Datatype type() const { return MPI_UINT64_T; }
+};
 
   template <typename T>
   struct abstract_or_: public virtual abstract_op<T>{};
@@ -86,13 +92,16 @@ namespace BCL {
   struct plus <int> : public abstract_plus <int>, public abstract_int, public atomic_op <int> {};
 
   template <>
-  struct plus <uint64_t> : public abstract_plus <uint64_t>, public abstract_uint64_t, public atomic_op <uint64_t> {};
-
-  template <>
   struct plus <float> : public abstract_plus <float>, public abstract_float {};
 
   template <>
   struct plus <double> : public abstract_plus <double>, public abstract_double {};
+
+template<>
+struct plus<uint32_t> : public abstract_plus<uint32_t>, public abstract_uint32_t, public atomic_op<uint32_t> {};
+
+template<>
+struct plus<uint64_t> : public abstract_plus<uint64_t>, public abstract_uint64_t, public atomic_op<uint64_t> {};
 
   template <typename T>
   struct abstract_land : public virtual abstract_op <T> {

@@ -68,7 +68,7 @@ int main()
 				total_fail_time;
         	ta::na          na;
 
-		elem_re += myStack.mem.list_recla.size();
+		elem_re += myStack.mem.list_rec.size();
 
 		if (na.node_num == 1)
 			printf("[Proc %lu]%f (s), %f (s), %lu, %lu, %lu, %lu, %lu\n", BCL::rank(),
