@@ -112,10 +112,9 @@ dds::gptr<T> dds::ebr::memory<T>::malloc()
 				list_rec.pop_back();
 				return addr;
 			}
-			else // the list of reclaimed global memory is empty
-				return nullptr;
 		}
 	}
+	return nullptr;
 }
 
 template<typename T>
@@ -146,14 +145,13 @@ void dds::ebr::memory<T>::op_begin()
 			bool 		seen = true;
 			for (uint64_t i = 0; i < BCL::nprocs(); ++i)
 			{
+				addr.rank = i;
 				value = BCL::aget_sync(addr);	// one RMA
 				if (value != MIN && value != timestamp)
 				{
 					seen = false;
 					break;
 				}
-				else // if (value == MAX || value == timestamp)
-					++addr;
 			}
 
 			if (seen)
