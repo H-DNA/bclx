@@ -93,7 +93,7 @@ dds::gptr<T> dds::ebr2::memory<T>::malloc()
 	{
 		// tracing
 		#ifdef	TRACING
-			elem_re++;
+			elem_ru++;
 		#endif
 
 		gptr<T> addr = list_rec.back();
@@ -111,7 +111,7 @@ dds::gptr<T> dds::ebr2::memory<T>::malloc()
 			{
 				// tracing
 				#ifdef	TRACING
-					elem_re++;
+					elem_ru++;
 				#endif
 
 				gptr<T> addr = list_rec.back();
@@ -182,6 +182,11 @@ void dds::ebr2::memory<T>::empty()
 	for (uint64_t i = 0; i < list_ret.size(); ++i)
 		if (list_ret[i].era_del < max_safe_epoch)
 		{
+			// tracing
+			#ifdef	TRACING
+				++elem_rc;
+			#endif
+
 			list_rec.push_back(list_ret[i].ptr);
 			list_ret.erase(list_ret.begin() + i);
 		}

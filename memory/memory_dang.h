@@ -86,7 +86,7 @@ dds::gptr<T> dds::dang::memory<T>::malloc()
 	{
 		// tracing
 		#ifdef  TRACING
-			++elem_re;
+			++elem_ru;
 		#endif
 
 		gptr<T> addr = list_rec.back();
@@ -115,7 +115,7 @@ dds::gptr<T> dds::dang::memory<T>::malloc()
                         {
 				// tracing
 				#ifdef  TRACING
-					++elem_re;
+					++elem_ru;
 				#endif
 
 				gptr<T> addr = list_rec.back();
@@ -234,7 +234,14 @@ void dds::dang::memory<T>::empty()
 		if (BCL::aget_sync(temp).taken || std::binary_search(plist.begin(), plist.end(), addr))
 			new_dlist.push_back(addr);
 		else
+		{
+			// tracing
+			#ifdef	TRACING
+				++elem_rc;
+			#endif
+
 			list_rec.push_back(addr);
+		}
 	}
 
 	// Stage 4

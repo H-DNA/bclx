@@ -3,6 +3,8 @@
 
 #include "../config.h"		// Configurations
 
+#include "memory_nmr.h"		// Using No Memory Reclamation
+
 #include "memory_hp.h"		// Using Hazard Pointers [Michael, PODC'02 & TPDC'04]
 
 #include "memory_ebr.h"		// Using Epoch-Based Reclamation [Fraser, PhD'04] & [Hart et al., IPDPS'06 & JPDC'07]
@@ -17,6 +19,6 @@
 
 #include "memory_dang2.h"	// Using with Lock-Based Data Structures Only
 
-#include "memory_dang3.h"	// Using no Reclamation
+#include "memory_dang3.h"	// Using Hazard Pointers, but Preserving the Invariant and Lock-Freedom
 
 #endif /* MEMORY_H */

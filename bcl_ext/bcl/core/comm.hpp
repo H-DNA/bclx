@@ -1,17 +1,25 @@
 #pragma once
 
+#include <cstddef>	// size_t...
+
 namespace BCL {
 
 /* Mine */
 
-template <typename T>
-inline void store(const T &src, const GlobalPtr<T> &dst)
+template<typename T>
+inline void store(const T& src, const GlobalPtr<T>& dst)
 {
 	BCL::lwrite(&src, dst, 1);
 }
 
-template <typename T>
-inline void rput_sync(const T &src, const GlobalPtr<T> &dst)
+template<typename T>
+inline void rput_sync(const T* src, const GlobalPtr<T>& dst, const size_t& size)
+{
+	BCL::rwrite_sync(src, dst, size);
+}
+
+template<typename T>
+inline void rput_sync(const T& src, const GlobalPtr<T>& dst)
 {
 	//if (BCL::rank() == dst.rank)
 	//	BCL::lwrite(&src, dst, 1);
@@ -19,34 +27,46 @@ inline void rput_sync(const T &src, const GlobalPtr<T> &dst)
 		BCL::rwrite_sync(&src, dst, 1);
 }
 
-template <typename T>
-inline void rput_async(const T &src, const GlobalPtr<T> &dst)
+template<typename T>
+inline void rput_async(const T& src, const GlobalPtr<T>& dst)
 {
 	BCL::rwrite_async(&src, dst, 1);
 }
 
-template <typename T>
-inline void aput_sync(const T &src, const GlobalPtr<T> &dst)
+template<typename T>
+inline void aput_sync(const T& src, const GlobalPtr<T>& dst)
 {
 	BCL::awrite_sync(&src, dst, 1);
 }
 
-template <typename T>
-inline void aput_async(const T &src, const GlobalPtr<T> &dst)
+template<typename T>
+inline void aput_async(const T& src, const GlobalPtr<T>& dst)
 {
 	BCL::awrite_async(&src, dst, 1);
 }
 
-template <typename T>
-inline T load(const GlobalPtr<T> &src)
+template<typename T>
+inline void load(const GlobalPtr<T>& src, T* dst, const size_t& size)
+{
+	BCL::lread(src, dst, size);
+}
+
+template<typename T>
+inline T load(const GlobalPtr<T>& src)
 {
 	T rv;
 	BCL::lread(src, &rv, 1);
 	return rv;
 }
 
-template <typename T>
-inline T rget_sync(const GlobalPtr<T> &src)
+template<typename T>
+inline T* rget_sync(const GlobalPtr<T>& src, T* dst, const size_t& size)
+{
+	BCL::rread_sync(src, dst, size);
+}
+
+template<typename T>
+inline T rget_sync(const GlobalPtr<T>& src)
 {
 	T rv;
 	//if (BCL::rank() == src.rank)
@@ -56,56 +76,56 @@ inline T rget_sync(const GlobalPtr<T> &src)
 	return rv;
 }
 
-template <typename T>
-inline T rget_async(const GlobalPtr<T> &src)
+template<typename T>
+inline T rget_async(const GlobalPtr<T>& src)
 {
 	T rv;
 	BCL::rread_async(src, &rv, 1);
 	return rv;
 }
 
-template <typename T>
-inline T aget_sync(const GlobalPtr<T> &src)
+template<typename T>
+inline T aget_sync(const GlobalPtr<T>& src)
 {
 	T rv;
 	BCL::aread_sync(src, &rv, 1);
 	return rv;
 }
 
-template <typename T>
-inline T aget_async(const GlobalPtr<T> &src)
+template<typename T>
+inline T aget_async(const GlobalPtr<T>& src)
 {
 	T rv;
 	BCL::aread_async(src, &rv, 1);
 	return rv;
 }
 
-template <typename T, typename U>
-inline T fao_sync(const GlobalPtr<T> &dst, const T &val, const atomic_op<U> &op)
+template<typename T, typename U>
+inline T fao_sync(const GlobalPtr<T>& dst, const T& val, const atomic_op<U>& op)
 {
 	T rv;
 	BCL::fetch_and_op_sync(dst, &val, op, &rv);
 	return rv;
 }
 
-template <typename T>
-inline T cas_sync(const GlobalPtr<T> &dst, const T &old_val, const T &new_val)
+template<typename T>
+inline T cas_sync(const GlobalPtr<T>& dst, const T& old_val, const T& new_val)
 {
 	T rv;
 	BCL::compare_and_swap_sync(dst, &old_val, &new_val, &rv);
 	return rv;
 }
 
-template <typename T, typename U>
-inline T reduce(const T &src_buf, const size_t &dst_rank, const atomic_op <U> &op)
+template<typename T, typename U>
+inline T reduce(const T& src_buf, const size_t& dst_rank, const atomic_op<U>& op)
 {
 	T rv;
 	BCL::reduce(&src_buf, &rv, dst_rank, op, 1);
 	return rv;
 }
 
-template <typename T, typename U>
-inline T allreduce(const T &src_buf, const atomic_op <U> &op)
+template<typename T, typename U>
+inline T allreduce(const T& src_buf, const atomic_op<U>& op)
 {
 	T rv;
 	BCL::allreduce(&src_buf, &rv, op, 1);

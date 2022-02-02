@@ -22,8 +22,10 @@ namespace ts
 		using namespace ibr;
 	#elif defined	MEM_DANG
 		using namespace dang;
-	#else
+	#elif defined 	MEM_DANG3
 		using namespace dang3;
+	#else	// No Memory Reclamation
+		using namespace nmr;
 	#endif
 
 	/* Data types */
@@ -144,7 +146,11 @@ bool dds::ts::stack<T>::push(const T &value)
 		oldTopAddr = BCL::aget_sync(top);
 
 		// update new element (global memory)
-                BCL::rput_sync({oldTopAddr, value}, newTopAddr);
+		#ifdef          MEM_DANG3
+			BCL::store({oldTopAddr, value}, newTopAddr);
+		#else
+                	BCL::rput_sync({oldTopAddr, value}, newTopAddr);
+		#endif
 
 		// update top (global memory)
 		if (BCL::cas_sync(top, oldTopAddr, newTopAddr) == oldTopAddr)

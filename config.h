@@ -9,7 +9,7 @@ namespace dds
 
 	/* Configurations */
 	#define	TRACING
-	#define	MEM_EBR
+	#define	MEM_DANG3
 	//#define	DEBUGGING
 
 	const uint64_t	TOTAL_OPS	=	exp2l(15);
@@ -40,7 +40,8 @@ namespace dds
 		uint64_t	fail_cs 	= 0;
 		uint64_t	fail_ea 	= 0;
 		double		fail_time	= 0;
-		uint64_t	elem_re		= 0;
+		uint64_t	elem_rc		= 0;
+		uint64_t	elem_ru		= 0;
 	#endif
 
 } /* namespace dds */

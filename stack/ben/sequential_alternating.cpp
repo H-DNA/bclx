@@ -59,7 +59,8 @@ int main()
 
         //tracing
         #ifdef  TRACING
-		uint64_t	total_elem_re,
+		uint64_t	total_elem_ru,
+				total_elem_rc,
 				total_succ_cs,
 				total_fail_cs,
 				total_succ_ea,
@@ -68,13 +69,15 @@ int main()
 				total_fail_time;
         	ta::na          na;
 
-		elem_re += myStack.mem.list_rec.size();
-
 		if (na.node_num == 1)
-			printf("[Proc %lu]%f (s), %f (s), %lu, %lu, %lu, %lu, %lu\n", BCL::rank(),
-				elapsed_time, fail_time, succ_cs, fail_cs, succ_ea, fail_ea, elem_re);
+			printf("[Proc %lu]%f (s), %f (s), %lu, %lu, %lu, %lu, %lu, %lu\n",
+					BCL::rank(), elapsed_time, fail_time,
+					succ_cs, fail_cs,
+					succ_ea, fail_ea,
+					elem_rc, elem_ru);
 
-		MPI_Reduce(&elem_re, &total_elem_re, 1, MPI_UINT64_T, MPI_SUM, MASTER_UNIT, na.nodeComm);
+		MPI_Reduce(&elem_ru, &total_elem_ru, 1, MPI_UINT64_T, MPI_SUM, MASTER_UNIT, na.nodeComm);
+		MPI_Reduce(&elem_rc, &total_elem_rc, 1, MPI_UINT64_T, MPI_SUM, MASTER_UNIT, na.nodeComm);
 		MPI_Reduce(&succ_cs, &total_succ_cs, 1, MPI_UINT64_T, MPI_SUM, MASTER_UNIT, na.nodeComm);
 		MPI_Reduce(&fail_cs, &total_fail_cs, 1, MPI_UINT64_T, MPI_SUM, MASTER_UNIT, na.nodeComm);
 		MPI_Reduce(&succ_ea, &total_succ_ea, 1, MPI_UINT64_T, MPI_SUM, MASTER_UNIT, na.nodeComm);
@@ -82,8 +85,11 @@ int main()
 		MPI_Reduce(&elapsed_time, &node_time, 1, MPI_DOUBLE, MPI_MAX, MASTER_UNIT, na.nodeComm);
 		MPI_Reduce(&fail_time, &total_fail_time, 1, MPI_DOUBLE, MPI_MAX, MASTER_UNIT, na.nodeComm);
                 if (na.rank == MASTER_UNIT)
-                        printf("[Node %d]%f (s), %f (s), %lu, %lu, %lu, %lu, %lu\n", na.node_id, node_time,
-				total_fail_time, total_succ_cs, total_fail_cs, total_succ_ea, total_fail_ea, total_elem_re);
+                        printf("[Node %d]%f (s), %f (s), %lu, %lu, %lu, %lu, %lu, %lu\n",
+					na.node_id, node_time, total_fail_time,
+					total_succ_cs, total_fail_cs,
+					total_succ_ea, total_fail_ea,
+					total_elem_rc, total_elem_ru);
         #endif
 
 	BCL::finalize();

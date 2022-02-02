@@ -11,36 +11,37 @@ namespace dds
 
 namespace hp
 {
-        template<typename T>
-        class memory
-        {
-        public:
-		std::vector<gptr<T>>	list_rec;	// contain reclaimed elems
 
-                memory();
-                ~memory();
-		gptr<T> malloc();			// allocate global memory
-                void free(const gptr<T>&);		// deallocate global memory
-		void op_begin();			// indicate the beginning of a concurrent operation
-		void op_end();				// indicate the end of a concurrent operation
-		bool try_reserve(gptr<T>&,		// try to protect a global pointer from reclamation
-				const gptr<gptr<T>>&);
-		void unreserve(const gptr<T>&);		// stop protecting a global pointer
+template<typename T>
+class memory
+{
+public:
+	std::vector<gptr<T>>	list_rec;	// contain reclaimed elems
+	
+	memory();
+	~memory();
+	gptr<T> malloc();			// allocate global memory
+	void free(const gptr<T>&);		// deallocate global memory
+	void op_begin();			// indicate the beginning of a concurrent operation
+	void op_end();				// indicate the end of a concurrent operation
+	bool try_reserve(gptr<T>&,		// try to protect a global pointer from reclamation
+			const gptr<gptr<T>>&);
+	void unreserve(const gptr<T>&);		// stop protecting a global pointer
 
-	private:
-                const gptr<T>		NULL_PTR 	= nullptr;
-        	const uint32_t		HPS_PER_UNIT 	= 1;
-        	const uint64_t		HP_TOTAL	= BCL::nprocs() * HPS_PER_UNIT;
-        	const uint64_t		HP_WINDOW	= HP_TOTAL * 2;
+private:
+	const gptr<T>		NULL_PTR 	= nullptr;
+        const uint32_t		HPS_PER_UNIT 	= 1;
+        const uint64_t		HP_TOTAL	= BCL::nprocs() * HPS_PER_UNIT;
+        const uint64_t		HP_WINDOW	= HP_TOTAL * 2;
 
-                gptr<T>         	pool;		// allocate global memory
-                gptr<T>         	pool_rep;	// deallocate global memory
-                uint64_t		capacity;	// contain global memory capacity (bytes)
-		gptr<gptr<T>>		reservation;	// be an array of hazard pointers of the calling unit
-                std::vector<gptr<T>>	list_ret;	// contain retired elems
+	gptr<T>         	pool;		// allocate global memory
+	gptr<T>         	pool_rep;	// deallocate global memory
+	uint64_t		capacity;	// contain global memory capacity (bytes)
+	gptr<gptr<T>>		reservation;	// be an array of hazard pointers of the calling unit
+	std::vector<gptr<T>>	list_ret;	// contain retired elems
 
-                void scan();
-        };
+	void empty();
+};
 
 } /* namespace hp */
 
@@ -80,7 +81,7 @@ dds::gptr<T> dds::hp::memory<T>::malloc()
 	{
 		// tracing
 		#ifdef	TRACING
-			++elem_re;
+			++elem_ru;
 		#endif
 
 		gptr<T> addr = list_rec.back();
@@ -94,12 +95,12 @@ dds::gptr<T> dds::hp::memory<T>::malloc()
                 else // if (pool.ptr == capacity)
 		{
 			// try one more to reclaim global memory
-			scan();
+			empty();
 			if (!list_rec.empty())
 			{
 				// tracing
 				#ifdef  TRACING
-					++elem_re;
+					++elem_ru;
 				#endif
 
 				gptr<T> addr = list_rec.back();
@@ -116,7 +117,7 @@ void dds::hp::memory<T>::free(const gptr<T>& addr)
 {
 	list_ret.push_back(addr);
 	if (list_ret.size() >= HP_WINDOW)
-		scan();
+		empty();
 }
 
 template<typename T>
@@ -174,7 +175,7 @@ void dds::hp::memory<T>::unreserve(const gptr<T>& ptr)
 }
 
 template<typename T>
-void dds::hp::memory<T>::scan()
+void dds::hp::memory<T>::empty()
 {	
 	std::vector<gptr<T>>	plist;		// contain non-null hazard pointers
 	std::vector<gptr<T>>	new_dlist;	// be dlist after finishing the Scan function
@@ -210,7 +211,14 @@ void dds::hp::memory<T>::scan()
 		if (std::binary_search(plist.begin(), plist.end(), addr))
 			new_dlist.push_back(addr);
 		else
+		{
+			// tracing
+			#ifdef	TRACING
+				++elem_rc;
+			#endif
+
 			list_rec.push_back(addr);
+		}
 	}
 
 	// Stage 4

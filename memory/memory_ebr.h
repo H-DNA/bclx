@@ -88,7 +88,7 @@ dds::gptr<T> dds::ebr::memory<T>::malloc()
 	{
 		// tracing
 		#ifdef	TRACING
-			elem_re++;
+			elem_ru++;
 		#endif
 
 		gptr<T> addr = list_rec.back();
@@ -105,7 +105,7 @@ dds::gptr<T> dds::ebr::memory<T>::malloc()
 			{
 				// tracing
 				#ifdef	TRACING
-					elem_re++;
+					elem_ru++;
 				#endif
 
 				gptr<T> addr = list_rec.back();
@@ -157,6 +157,12 @@ void dds::ebr::memory<T>::op_begin()
 			if (seen)
 			{
 				uint32_t index = curr % 3;
+
+				// tracing
+				#ifdef	TRACING
+					elem_rc += list_ret[index].size();
+				#endif
+
 				std::move(list_ret[index].begin(), list_ret[index].end(),
 						std::back_inserter(list_rec));
 				list_ret[index].clear();

@@ -109,7 +109,7 @@ dds::gptr<T> dds::he::memory<T>::malloc()
 	{
 		// tracing
 		#ifdef  TRACING
-			elem_re++;
+			elem_ru++;
 		#endif
 
 		gptr<block<T>> addr = list_rec.back();
@@ -137,7 +137,7 @@ dds::gptr<T> dds::he::memory<T>::malloc()
 			{
 				// tracing
 				#ifdef  TRACING
-					elem_re++;
+					elem_ru++;
 				#endif
 
 				gptr<block<T>> addr = list_rec.back();
@@ -259,6 +259,11 @@ void dds::he::memory<T>::empty()
 
 		if (!conflict)
 		{
+			// tracing
+			#ifdef	TRACING
+				++elem_rc;
+			#endif
+
 			list_rec.push_back(list_ret[i].ptr);
 			list_ret.erase(list_ret.begin() + i);
 		}
