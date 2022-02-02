@@ -11,6 +11,7 @@ public:
 	queue_spsc(const uint64_t&	host,
 		const uint64_t&		cap);
 	~queue_spsc();
+	void clear();
 	void enqueue(const std::vector<T>& vals);
 	bool dequeue(std::vector<T>& vals);
 
@@ -37,7 +38,8 @@ dds::queue_spsc<T>::queue_spsc(const uint64_t&	host,
 
 		items = BCL::alloc<T>(cap);
 	}
-	
+
+	// synchronize	
 	tail = BCL::broadcast(tail, host);
 	items = BCL::broadcast(items, host);
 }
@@ -45,11 +47,17 @@ dds::queue_spsc<T>::queue_spsc(const uint64_t&	host,
 template<typename T>
 dds::queue_spsc<T>::~queue_spsc()
 {
-	/*if (BCL::rank() == host)
+	/* No-op */
+}
+
+template<typename T>
+void dds::queue_spsc<T>::clear()
+{
+	if (BCL::rank() == host)
 	{
 		BCL::dealloc<uint64_t>(tail);
 		BCL::dealloc<T>(items);
-	}*/
+	}
 }
 
 template<typename T>

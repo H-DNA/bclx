@@ -86,8 +86,15 @@ dds::dang3::memory<T>::memory()
 template<typename T>
 dds::dang3::memory<T>::~memory()
 {
+	for (uint64_t i = 0; i < BCL::nprocs(); ++i)
+		for (uint64_t j = 0; j < BCL::nprocs(); ++j)
+			queues[i][j].clear();
+
         BCL::dealloc<T>(pool_rep);
 	BCL::dealloc<gptr<T>>(reservation);
+
+	// synchronize
+	BCL::barrier();
 }
 
 template<typename T>
