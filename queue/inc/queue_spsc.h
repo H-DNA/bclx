@@ -1,6 +1,10 @@
 #ifndef QUEUE_SPSC_H
 #define QUEUE_SPSC_H
 
+#include <vector>	// std::vector...
+#include <cstdint>	// uint64_t...
+#include <utility>	// std::move...
+
 namespace dds
 {
 
@@ -78,8 +82,11 @@ bool dds::queue_spsc<T>::dequeue(std::vector<T>& vals)
 	if (size == 0)
 		return false;	// the queue is empty now
 	gptr<T> temp = items + head % capacity;
-	T* array = &vals[0];
+	T* array = new T[size];
 	BCL::load(temp, array, size);	// local
+	for (uint64_t i = 0; i < size; ++i)
+		vals.push_back(array[i]);
+	delete[] array;
 	head += vals.size();
 	return true;
 }

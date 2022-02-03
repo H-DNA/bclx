@@ -1,5 +1,5 @@
 #The main file name of your program
-OUT = test
+OUT = test_spsc
 
 #The path of input files
 DIR_IN = ./ben

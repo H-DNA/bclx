@@ -6,7 +6,7 @@
 #else
         #include "../../memory/memory_dang3.h"
 #endif
-#include "../../lock/lock_mcs.h"
+#include "../../lock/inc/lock_mcs.h"
 
 namespace dds
 {
