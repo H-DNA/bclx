@@ -92,9 +92,6 @@ dds::dang3::memory<T>::~memory()
 
         BCL::dealloc<T>(pool_rep);
 	BCL::dealloc<gptr<T>>(reservation);
-
-	// synchronize
-	BCL::barrier();
 }
 
 template<typename T>

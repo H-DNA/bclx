@@ -64,12 +64,10 @@ template<typename T>
 void dds::queue_spsc<T>::enqueue(const std::vector<T>& vals)
 {
 	gptr<T> temp = items + tail_local % capacity;
-	T* list = new T[vals.size()];
-	for (uint64_t i = 0; i < vals.size(); ++i)
-		list[i] = vals[i];
-	BCL::rput_sync(list, temp, vals.size());	// remote
-	delete[] list;
-	tail_local = BCL::fao_sync(tail, vals.size(), BCL::plus<uint64_t>{});	// remote
+	const T* array = &vals[0];
+	BCL::rput_sync(array, temp, vals.size());	// remote
+	tail_local += vals.size();
+	BCL::aput_sync(tail_local, tail);	// remote
 }
 
 template<typename T>
@@ -80,11 +78,8 @@ bool dds::queue_spsc<T>::dequeue(std::vector<T>& vals)
 	if (size == 0)
 		return false;	// the queue is empty now
 	gptr<T> temp = items + head % capacity;
-	T* list = new T[size];
-	BCL::load(temp, list, size);	// local
-	for (uint64_t i = 0; i < size; ++i)
-		vals.push_back(list[i]);
-	delete[] list;
+	T* array = &vals[0];
+	BCL::load(temp, array, size);	// local
 	head += vals.size();
 	return true;
 }
