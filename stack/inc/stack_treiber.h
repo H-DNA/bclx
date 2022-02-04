@@ -148,7 +148,7 @@ bool dds::ts::stack<T>::push(const T &value)
 		oldTopAddr = BCL::aget_sync(top);
 
 		// update new element (global memory)
-		#ifdef          MEM_DANG3
+		#ifdef	MEM_DANG3
 			BCL::store({oldTopAddr, value}, newTopAddr);
 		#else
                 	BCL::rput_sync({oldTopAddr, value}, newTopAddr);

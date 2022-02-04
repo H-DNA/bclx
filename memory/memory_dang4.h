@@ -79,13 +79,62 @@ template<typename T>
 dds::gptr<T> dds::dang4::memory<T>::malloc()
 {
 	// Assume that # compute nodes is always even
-	// & each compute node is used at a maximum
-	
-	gptr<T> ptr = pool++;
-	if (na.node_id % 2 == 0)
-		return {ptr.rank + na.size, ptr.ptr};
-	else // if (na.node_id % 2 != 0)
-		return {ptr.rank - na.size, ptr.ptr};
+	// & each compute node is used up
+	if (na.node_num == 1)
+	{
+		// determine the global address of the new element
+		if (!list_rec.empty())
+		{
+			// tracing
+			#ifdef	TRACING
+				++elem_ru;
+			#endif
+
+			gptr<T> addr = list_rec.back();
+			list_rec.pop_back();
+		        return addr;
+		}
+		else // the list of reclaimed global memory is empty
+		{
+		        if (pool.ptr < capacity)
+		                return pool++;
+		        else // if (pool.ptr == capacity)
+			{
+				// try one more to reclaim global memory
+				empty();
+				if (!list_rec.empty())
+				{
+					// tracing
+					#ifdef  TRACING
+						++elem_ru;
+					#endif
+
+					gptr<T> addr = list_rec.back();
+					list_rec.pop_back();
+					return addr;
+				}
+			}
+		}
+		return nullptr;
+	}
+	else // if (na.node_num > 1)
+	{
+		gptr<T> ptr = pool++;
+		if (na.node_id % 2 == 0)
+		{
+			// debugging
+			printf("[%lu]<%u,%u>\n", BCL::rank(), ptr.rank + na.size, ptr.ptr);
+
+			return {ptr.rank + na.size, ptr.ptr};
+		}
+		else // if (na.node_id % 2 != 0)
+		{	
+			// debugging
+			printf("[%lu]<%u,%u>\n", BCL::rank(), ptr.rank - na.size, ptr.ptr);
+
+			return {ptr.rank - na.size, ptr.ptr};
+		}
+	}
 }
 
 template<typename T>

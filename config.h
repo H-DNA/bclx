@@ -33,7 +33,7 @@ namespace dds
 	uint64_t	bk_init_master	=	exp2l(1);	//us
 	uint64_t	bk_max_master	=	exp2l(20);	//us
 	
-	//tracing
+	// tracing
 	#ifdef  TRACING
         	uint64_t	succ_cs		= 0;
 		uint64_t	succ_ea 	= 0;
