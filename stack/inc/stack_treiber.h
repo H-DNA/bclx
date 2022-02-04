@@ -303,7 +303,11 @@ bool dds::ts::stack<T>::push_fill(const T &value)
 		oldTopAddr = BCL::load(top);
 
 		// update new element (global memory)
-		BCL::store({oldTopAddr, value}, newTopAddr);
+		#ifdef	MEM_DANG3
+			BCL::store({oldTopAddr, value}, newTopAddr);
+		#else
+			BCL::rput_sync({oldTopAddr, value}, newTopAddr);
+		#endif
 
 		// update top (global memory)
 		BCL::store(newTopAddr, top);
