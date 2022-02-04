@@ -14,8 +14,6 @@ template<typename T>
 class memory
 {
 public:
-	std::vector<gptr<T>>	list_rec;	// unused
-
 	memory();
 	~memory();
 	gptr<T> malloc();			// allocate global memory

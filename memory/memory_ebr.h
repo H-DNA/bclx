@@ -17,8 +17,6 @@ namespace ebr
 	class memory
 	{
 	public:
-		std::vector<gptr<T>>	list_rec;	// contain reclaimed elems
-
 		memory();
 		~memory();
 		gptr<T> malloc();			// allocate global memory
@@ -41,6 +39,7 @@ namespace ebr
 		uint64_t		counter;	// a local counter
 		uint32_t		curr;		// indicate the current epoch
 		std::vector<gptr<T>>	list_ret[3];	// contain retired elems
+		std::vector<gptr<T>>	list_rec;	// contain reclaimed elems
 	};
 
 } /* namespace ebr */

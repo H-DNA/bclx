@@ -1,15 +1,16 @@
-#ifndef MEMORY_HP_H
-#define MEMORY_HP_H
+#ifndef MEMORY_DANG4_H
+#define MEMORY_DANG4_H
 
 #include <cstdint>	// uint64_t...
 #include <vector>	// std::vector...
 #include <algorithm>	// std::sort...
 #include <utility>	// std::move...
+#include "../lib/ta.h"	// ta::na...
 
 namespace dds
 {
 
-namespace hp
+namespace dang4
 {
 
 template<typename T>
@@ -39,6 +40,8 @@ private:
 	std::vector<gptr<T>>	list_ret;	// contain retired elems
 	std::vector<gptr<T>>	list_rec;	// contain reclaimed elems
 
+	ta::na			na;		// contain node information
+
 	void empty();
 };
 
@@ -47,10 +50,10 @@ private:
 } /* namespace dds */
 
 template<typename T>
-dds::hp::memory<T>::memory()
+dds::dang4::memory<T>::memory()
 {
 	if (BCL::rank() == MASTER_UNIT)
-		mem_manager = "HP";
+		mem_manager = "DANG4";
 
         gptr<gptr<T>> temp = reservation = BCL::alloc<gptr<T>>(HPS_PER_UNIT);
 	for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
@@ -66,53 +69,27 @@ dds::hp::memory<T>::memory()
 }
 
 template<typename T>
-dds::hp::memory<T>::~memory()
+dds::dang4::memory<T>::~memory()
 {
         BCL::dealloc<T>(pool_rep);
 	BCL::dealloc<gptr<T>>(reservation);
 }
 
 template<typename T>
-dds::gptr<T> dds::hp::memory<T>::malloc()
+dds::gptr<T> dds::dang4::memory<T>::malloc()
 {
-        // determine the global address of the new element
-        if (!list_rec.empty())
-	{
-		// tracing
-		#ifdef	TRACING
-			++elem_ru;
-		#endif
-
-		gptr<T> addr = list_rec.back();
-		list_rec.pop_back();
-                return addr;
-	}
-        else // the list of reclaimed global memory is empty
-        {
-                if (pool.ptr < capacity)
-                        return pool++;
-                else // if (pool.ptr == capacity)
-		{
-			// try one more to reclaim global memory
-			empty();
-			if (!list_rec.empty())
-			{
-				// tracing
-				#ifdef  TRACING
-					++elem_ru;
-				#endif
-
-				gptr<T> addr = list_rec.back();
-				list_rec.pop_back();
-				return addr;
-			}
-		}
-        }
-	return nullptr;
+	// Assume that # compute nodes is always even
+	// & each compute node is used at a maximum
+	
+	gptr<T> ptr = pool++;
+	if (na.node_id % 2 == 0)
+		return {ptr.rank + na.size, ptr.ptr};
+	else // if (na.node_id % 2 != 0)
+		return {ptr.rank - na.size, ptr.ptr};
 }
 
 template<typename T>
-void dds::hp::memory<T>::free(const gptr<T>& addr)
+void dds::dang4::memory<T>::free(const gptr<T>& addr)
 {
 	list_ret.push_back(addr);
 	if (list_ret.size() >= HP_WINDOW)
@@ -120,19 +97,19 @@ void dds::hp::memory<T>::free(const gptr<T>& addr)
 }
 
 template<typename T>
-void dds::hp::memory<T>::op_begin()
+void dds::dang4::memory<T>::op_begin()
 {
 	/* No-op */
 }
 
 template<typename T>
-void dds::hp::memory<T>::op_end()
+void dds::dang4::memory<T>::op_end()
 {
 	/* No-op */
 }
 
 template<typename T>
-bool dds::hp::memory<T>::try_reserve(gptr<T>& ptr, const gptr<gptr<T>>& atom)
+bool dds::dang4::memory<T>::try_reserve(gptr<T>& ptr, const gptr<gptr<T>>& atom)
 {
 	gptr<gptr<T>> temp = reservation;
         for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
@@ -160,7 +137,7 @@ bool dds::hp::memory<T>::try_reserve(gptr<T>& ptr, const gptr<gptr<T>>& atom)
 }
 
 template<typename T>
-void dds::hp::memory<T>::unreserve(const gptr<T>& ptr)
+void dds::dang4::memory<T>::unreserve(const gptr<T>& ptr)
 {
 	gptr<gptr<T>> temp = reservation;
 	for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
@@ -174,7 +151,7 @@ void dds::hp::memory<T>::unreserve(const gptr<T>& ptr)
 }
 
 template<typename T>
-void dds::hp::memory<T>::empty()
+void dds::dang4::memory<T>::empty()
 {	
 	std::vector<gptr<T>>	plist;		// contain non-null hazard pointers
 	std::vector<gptr<T>>	new_dlist;	// be dlist after finishing the Scan function
@@ -224,4 +201,4 @@ void dds::hp::memory<T>::empty()
 	list_ret = std::move(new_dlist);
 }
 
-#endif /* MEMORY_HP_H */
+#endif /* MEMORY_DANG4_H */

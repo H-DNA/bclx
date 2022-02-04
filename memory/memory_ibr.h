@@ -36,8 +36,6 @@ template<typename T>
 class memory
 {
 public:
-	std::vector<gptr<block<T>>> list_rec;	// contain reclaimed elems
-
 	memory();
 	~memory();
 	gptr<T> malloc();			// allocate global memory
@@ -53,13 +51,14 @@ private:
 	const uint64_t		EPOCH_FREQ	= BCL::nprocs();	// freq. of increasing epoch
 	const uint64_t		EMPTY_FREQ	= BCL::nprocs() * 2;	// freq. of reclaiming retired
 
-	gptr<block<T>>		pool;		// allocate PGAS
-	gptr<block<T>>		pool_rep;	// deallocate PGAS
-	uint64_t		capacity;	// contain global memory capacity (bytes)
-	gptr<uint32_t>		epoch;		// a global clock
-	gptr<reser>		reservation;	// contain the reserved things
-	uint64_t		counter;	// a local counter
-	std::vector<sblock<T>>	list_ret;	// contain retired elems
+	gptr<block<T>>			pool;		// allocate PGAS
+	gptr<block<T>>			pool_rep;	// deallocate PGAS
+	uint64_t			capacity;	// contain global memory capacity (bytes)
+	gptr<uint32_t>			epoch;		// a global clock
+	gptr<reser>			reservation;	// contain the reserved things
+	uint64_t			counter;	// a local counter
+	std::vector<sblock<T>>		list_ret;	// contain retired elems
+	std::vector<gptr<block<T>>>	list_rec;	// contain reclaimed elems
 
 	void empty();
 };

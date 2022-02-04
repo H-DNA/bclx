@@ -1,10 +1,10 @@
 #ifndef MEMORY_DANG_H
 #define MEMORY_DANG_H
 
-#include <cstdint>	// uint_8, uint_32, uint64_t
-#include <vector>	// std::vector
-#include <algorithm>	// std::sort, std::unique, std::binary_search
-#include <utility>	// std::move
+#include <cstdint>	// uint64_t...
+#include <vector>	// std::vector...
+#include <algorithm>	// std::sort...
+#include <utility>	// std::move...
 
 namespace dds
 {
@@ -23,8 +23,6 @@ template<typename T>
 class memory
 {
 public:
-	std::vector<gptr<T>>	list_rec;	// contain reclaimed elems
-
 	memory();
 	~memory();
 	gptr<T> malloc();			// allocate global memory
@@ -46,6 +44,7 @@ private:
 	uint64_t		capacity;       // contain global memory capacity (bytes)
 	gptr<gptr<T>>		reservation;	// be an array of hazard pointers
 	std::vector<gptr<T>>	list_all;	// contain allocated elems
+	std::vector<gptr<T>>	list_rec;	// contain reclaimed elems
 
 	void empty();
 };

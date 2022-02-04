@@ -1,8 +1,8 @@
 #ifndef MEMORY_DANG2_H
 #define MEMORY_DANG2_H
 
-#include <cstdint>	// uint64_t
-#include <vector>	// std::vector
+#include <cstdint>	// uint64_t...
+#include <vector>	// std::vector...
 
 namespace dds
 {

@@ -23,8 +23,6 @@ namespace ebr2
 	class memory
 	{
 	public:
-		std::vector<gptr<T>>	list_rec;	// contain reclaimed elems
-
 		memory();
 		~memory();
 		gptr<T> malloc();			// allocate global memory
@@ -47,6 +45,7 @@ namespace ebr2
 		gptr<uint64_t>		reservation;	// a SWMR variable
 		uint64_t		counter;	// a local counter
 		std::vector<block<T>>	list_ret;	// contain retired elems
+		std::vector<gptr<T>>	list_rec;	// contain reclaimed elems
 
 		void empty();
 	};

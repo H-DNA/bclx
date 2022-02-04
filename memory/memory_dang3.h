@@ -17,8 +17,6 @@ template<typename T>
 class memory
 {
 public:
-	std::vector<gptr<T>>	list_rec;	// contain reclaimed elems
-
 	memory();
 	~memory();
 	gptr<T> malloc();			// allocate global memory
@@ -35,13 +33,14 @@ private:
         const uint64_t		HP_TOTAL	= BCL::nprocs() * HPS_PER_UNIT;
         const uint64_t		HP_WINDOW	= HP_TOTAL * 2;
 
-	gptr<T>         			pool;		// allocate global memory
-	gptr<T>         			pool_rep;	// deallocate global memory
-	uint64_t				capacity;	// contain global memory capacity (bytes)
-	gptr<gptr<T>>				reservation;	// be an array of hazard pointers of the calling unit
-	std::vector<gptr<T>>			list_ret;	// contain retired elems
-	uint64_t				counter;
-	std::vector<std::vector<gptr<T>>>	buffers;	// be local buffers
+	gptr<T>         					pool;		// allocate global memory
+	gptr<T>         					pool_rep;	// deallocate global memory
+	uint64_t						capacity;	// contain global memory capacity (bytes)
+	gptr<gptr<T>>						reservation;	// be a reservation array of the calling unit
+	std::vector<gptr<T>>					list_ret;	// contain retired elems
+	std::vector<gptr<T>>					list_rec;	// contain reclaimed elems
+	uint64_t						counter;	// be a counter
+	std::vector<std::vector<gptr<T>>>			buffers;	// be local buffers
 	std::vector<std::vector<dds::queue_spsc<gptr<T>>>>	queues;		// be SPSC queues
 
         void empty();

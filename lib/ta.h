@@ -7,13 +7,13 @@ namespace ta
 	class na
 	{
 	public:
-		int 		rank;
-		int 		size;
-		int		*table;
-		int		node_id;
-		int		node_id_master;
-		int		node_num;
-		MPI_Comm	nodeComm;
+		int 		rank;		// the rank ID of calling process within its compute node
+		int 		size;		// # processes per compute node
+		int		*table;		// table[local_rank] == global_rank
+		int		node_id;	// the compute node ID of the calling process
+		int		node_id_master;	// the compute node ID of the master process
+		int		node_num;	// # compute nodes
+		MPI_Comm	nodeComm;	// compute node's communicator of the calling process
 
 		na();
 		~na();

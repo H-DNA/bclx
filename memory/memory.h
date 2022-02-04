@@ -19,6 +19,8 @@
 
 #include "memory_dang2.h"	// Using with Lock-Based Data Structures Only
 
-#include "memory_dang3.h"	// Using Hazard Pointers, but Preserving the Invariant and Lock-Freedom
+#include "memory_dang3.h"	// Using Hazard Pointers with Preserving Locality-Awareness and Lock-Freedom
+
+#include "memory_dang4.h"	// Using Hazard Pointers without Preserving Locality-Awareness 
 
 #endif /* MEMORY_H */
