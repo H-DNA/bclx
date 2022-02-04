@@ -65,6 +65,9 @@ dds::dang4::memory<T>::memory()
 	pool = pool_rep = BCL::alloc<T>(TOTAL_OPS);
         capacity = pool.ptr + TOTAL_OPS * sizeof(T);
 
+	// synchronize
+	BCL::barrier();
+
 	list_ret.reserve(HP_WINDOW);
 }
 
@@ -121,19 +124,9 @@ dds::gptr<T> dds::dang4::memory<T>::malloc()
 	{
 		gptr<T> ptr = pool++;
 		if (na.node_id % 2 == 0)
-		{
-			// debugging
-			printf("[%lu]<%u,%u>\n", BCL::rank(), ptr.rank + na.size, ptr.ptr);
-
 			return {ptr.rank + na.size, ptr.ptr};
-		}
 		else // if (na.node_id % 2 != 0)
-		{	
-			// debugging
-			printf("[%lu]<%u,%u>\n", BCL::rank(), ptr.rank - na.size, ptr.ptr);
-
 			return {ptr.rank - na.size, ptr.ptr};
-		}
 	}
 }
 
