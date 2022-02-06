@@ -77,45 +77,10 @@ dds::dang4::memory<T>::~memory()
 template<typename T>
 dds::gptr<T> dds::dang4::memory<T>::malloc()
 {
-	// Assume that # compute nodes is always even
-	// & each compute node is used up
+	// determine the global address of the new element
 	if (na.node_num == 1)
-	{
-		// determine the global address of the new element
-		if (!list_rec.empty())
-		{
-			// tracing
-			#ifdef	TRACING
-				++elem_ru;
-			#endif
-
-			gptr<T> addr = list_rec.back();
-			list_rec.pop_back();
-		        return addr;
-		}
-		else // the list of reclaimed global memory is empty
-		{
-		        if (pool.ptr < capacity)
-		                return pool++;
-		        else // if (pool.ptr == capacity)
-			{
-				// try one more to reclaim global memory
-				empty();
-				if (!list_rec.empty())
-				{
-					// tracing
-					#ifdef  TRACING
-						++elem_ru;
-					#endif
-
-					gptr<T> addr = list_rec.back();
-					list_rec.pop_back();
-					return addr;
-				}
-			}
-		}
-		return nullptr;
-	}
+		if (pool.ptr < capacity)
+			return pool++;
 	else // if (na.node_num > 1)
 	{
 		gptr<T> ptr = pool++;
@@ -124,6 +89,7 @@ dds::gptr<T> dds::dang4::memory<T>::malloc()
 		else // if (na.node_id % 2 != 0)
 			return {ptr.rank - na.size, ptr.ptr};
 	}
+	return nullptr
 }
 
 template<typename T>
