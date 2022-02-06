@@ -89,7 +89,7 @@ dds::gptr<T> dds::dang4::memory<T>::malloc()
 		else // if (na.node_id % 2 != 0)
 			return {ptr.rank - na.size, ptr.ptr};
 	}
-	return nullptr
+	return nullptr;
 }
 
 template<typename T>
