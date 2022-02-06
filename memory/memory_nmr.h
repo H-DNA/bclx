@@ -56,8 +56,7 @@ dds::gptr<T> dds::nmr::memory<T>::malloc()
         // determine the global address of the new element
         if (pool.ptr < capacity)
 		return pool++;
-	else // if (pool.ptr == capacity)
-		return nullptr;
+	return nullptr;
 }
 
 template<typename T>

@@ -15,12 +15,16 @@
 
 #include "memory_ibr.h"		// Using Interval-Based Reclamation (2GEIBR) [Wen et al., PPoPP'18]
 
-#include "memory_dang.h"	// Using Data Locality
+#include "memory_dang.h"	// Using Data Locality (My Rejected Journal)
 
 #include "memory_dang2.h"	// Using with Lock-Based Data Structures Only
 
-#include "memory_dang3.h"	// Using Hazard Pointers with Preserving Locality-Awareness and Lock-Freedom
+#include "memory_dang3.h"	// Using Hazard Pointers + SPSC Queues (push_load)
 
-#include "memory_dang4.h"	// Using Hazard Pointers without Preserving Locality-Awareness 
+#include "memory_dang4.h"	// Using Hazard Pointers + Minimum Locality (Baseline)
+
+#include "memory_dang5.h"	// Using Hazard Pointers + Maximum Locality (Baseline)
+
+#include "memory_dang6.h"	// Using Hazard Pointers + SPSC Queues (push_rget)
 
 #endif /* MEMORY_H */

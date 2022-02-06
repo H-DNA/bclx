@@ -1,16 +1,15 @@
-#ifndef MEMORY_DANG4_H
-#define MEMORY_DANG4_H
+#ifndef MEMORY_DANG5_H
+#define MEMORY_DANG5_H
 
 #include <cstdint>	// uint64_t...
 #include <vector>	// std::vector...
 #include <algorithm>	// std::sort...
 #include <utility>	// std::move...
-#include "../lib/ta.h"	// ta::na...
 
 namespace dds
 {
 
-namespace dang4
+namespace dang5
 {
 
 template<typename T>
@@ -39,20 +38,19 @@ private:
 	gptr<gptr<T>>		reservation;	// be an array of hazard pointers of the calling unit
 	std::vector<gptr<T>>	list_ret;	// contain retired elems
 	std::vector<gptr<T>>	list_rec;	// contain reclaimed elems
-	ta::na			na;		// contain node information
 
 	void empty();
 };
 
-} /* namespace dang4 */
+} /* namespace dang5 */
 
 } /* namespace dds */
 
 template<typename T>
-dds::dang4::memory<T>::memory()
+dds::dang5::memory<T>::memory()
 {
 	if (BCL::rank() == MASTER_UNIT)
-		mem_manager = "DANG4";
+		mem_manager = "DANG5";
 
         gptr<gptr<T>> temp = reservation = BCL::alloc<gptr<T>>(HPS_PER_UNIT);
 	for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
@@ -68,66 +66,23 @@ dds::dang4::memory<T>::memory()
 }
 
 template<typename T>
-dds::dang4::memory<T>::~memory()
+dds::dang5::memory<T>::~memory()
 {
         BCL::dealloc<T>(pool_rep);
 	BCL::dealloc<gptr<T>>(reservation);
 }
 
 template<typename T>
-dds::gptr<T> dds::dang4::memory<T>::malloc()
+dds::gptr<T> dds::dang5::memory<T>::malloc()
 {
-	// Assume that # compute nodes is always even
-	// & each compute node is used up
-	if (na.node_num == 1)
-	{
-		// determine the global address of the new element
-		if (!list_rec.empty())
-		{
-			// tracing
-			#ifdef	TRACING
-				++elem_ru;
-			#endif
-
-			gptr<T> addr = list_rec.back();
-			list_rec.pop_back();
-		        return addr;
-		}
-		else // the list of reclaimed global memory is empty
-		{
-		        if (pool.ptr < capacity)
-		                return pool++;
-		        else // if (pool.ptr == capacity)
-			{
-				// try one more to reclaim global memory
-				empty();
-				if (!list_rec.empty())
-				{
-					// tracing
-					#ifdef  TRACING
-						++elem_ru;
-					#endif
-
-					gptr<T> addr = list_rec.back();
-					list_rec.pop_back();
-					return addr;
-				}
-			}
-		}
-		return nullptr;
-	}
-	else // if (na.node_num > 1)
-	{
-		gptr<T> ptr = pool++;
-		if (na.node_id % 2 == 0)
-			return {ptr.rank + na.size, ptr.ptr};
-		else // if (na.node_id % 2 != 0)
-			return {ptr.rank - na.size, ptr.ptr};
-	}
+	// determine the global address of the new element
+	if (pool.ptr < capacity)
+		return pool++;
+	return nullptr;
 }
 
 template<typename T>
-void dds::dang4::memory<T>::free(const gptr<T>& addr)
+void dds::dang5::memory<T>::free(const gptr<T>& addr)
 {
 	list_ret.push_back(addr);
 	if (list_ret.size() >= HP_WINDOW)
@@ -135,19 +90,19 @@ void dds::dang4::memory<T>::free(const gptr<T>& addr)
 }
 
 template<typename T>
-void dds::dang4::memory<T>::op_begin()
+void dds::dang5::memory<T>::op_begin()
 {
 	/* No-op */
 }
 
 template<typename T>
-void dds::dang4::memory<T>::op_end()
+void dds::dang5::memory<T>::op_end()
 {
 	/* No-op */
 }
 
 template<typename T>
-bool dds::dang4::memory<T>::try_reserve(gptr<T>& ptr, const gptr<gptr<T>>& atom)
+bool dds::dang5::memory<T>::try_reserve(gptr<T>& ptr, const gptr<gptr<T>>& atom)
 {
 	gptr<gptr<T>> temp = reservation;
         for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
@@ -175,7 +130,7 @@ bool dds::dang4::memory<T>::try_reserve(gptr<T>& ptr, const gptr<gptr<T>>& atom)
 }
 
 template<typename T>
-void dds::dang4::memory<T>::unreserve(const gptr<T>& ptr)
+void dds::dang5::memory<T>::unreserve(const gptr<T>& ptr)
 {
 	gptr<gptr<T>> temp = reservation;
 	for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
@@ -189,7 +144,7 @@ void dds::dang4::memory<T>::unreserve(const gptr<T>& ptr)
 }
 
 template<typename T>
-void dds::dang4::memory<T>::empty()
+void dds::dang5::memory<T>::empty()
 {	
 	std::vector<gptr<T>>	plist;		// contain non-null hazard pointers
 	std::vector<gptr<T>>	new_dlist;	// be dlist after finishing the Scan function
@@ -239,4 +194,4 @@ void dds::dang4::memory<T>::empty()
 	list_ret = std::move(new_dlist);
 }
 
-#endif /* MEMORY_DANG4_H */
+#endif /* MEMORY_DANG5_H */

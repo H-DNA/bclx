@@ -1,5 +1,5 @@
-#ifndef MEMORY_DANG3_H
-#define MEMORY_DANG3_H
+#ifndef MEMORY_DANG6_H
+#define MEMORY_DANG6_H
 
 #include <cstdint>			// uint32_t...
 #include <vector>			// std::vector...
@@ -10,7 +10,7 @@
 namespace dds
 {
 
-namespace dang3
+namespace dang6
 {
 
 template<typename T>
@@ -46,15 +46,15 @@ private:
         void empty();
 };
 
-} /* namespace dang3 */
+} /* namespace dang6 */
 
 } /* namespace dds */
 
 template<typename T>
-dds::dang3::memory<T>::memory()
+dds::dang6::memory<T>::memory()
 {
 	if (BCL::rank() == MASTER_UNIT)
-		mem_manager = "DANG3";
+		mem_manager = "DANG6";
 
         gptr<gptr<T>> temp = reservation = BCL::alloc<gptr<T>>(HPS_PER_UNIT);
 	for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
@@ -83,7 +83,7 @@ dds::dang3::memory<T>::memory()
 }
 
 template<typename T>
-dds::dang3::memory<T>::~memory()
+dds::dang6::memory<T>::~memory()
 {
 	for (uint64_t i = 0; i < BCL::nprocs(); ++i)
 		for (uint64_t j = 0; j < BCL::nprocs(); ++j)
@@ -94,7 +94,7 @@ dds::dang3::memory<T>::~memory()
 }
 
 template<typename T>
-dds::gptr<T> dds::dang3::memory<T>::malloc()
+dds::gptr<T> dds::dang6::memory<T>::malloc()
 {
 	++counter;
 	if (counter % HP_WINDOW == 0)
@@ -151,7 +151,7 @@ dds::gptr<T> dds::dang3::memory<T>::malloc()
 }
 
 template<typename T>
-void dds::dang3::memory<T>::free(const gptr<T>& addr)
+void dds::dang6::memory<T>::free(const gptr<T>& addr)
 {
 	list_ret.push_back(addr);
 	if (list_ret.size() >= HP_WINDOW)
@@ -159,19 +159,19 @@ void dds::dang3::memory<T>::free(const gptr<T>& addr)
 }
 
 template<typename T>
-void dds::dang3::memory<T>::op_begin()
+void dds::dang6::memory<T>::op_begin()
 {
 	/* No-op */
 }
 
 template<typename T>
-void dds::dang3::memory<T>::op_end()
+void dds::dang6::memory<T>::op_end()
 {
 	/* No-op */
 }
 
 template<typename T>
-bool dds::dang3::memory<T>::try_reserve(gptr<T>& ptr, const gptr<gptr<T>>& atom)
+bool dds::dang6::memory<T>::try_reserve(gptr<T>& ptr, const gptr<gptr<T>>& atom)
 {
 	gptr<gptr<T>> temp = reservation;
         for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
@@ -199,7 +199,7 @@ bool dds::dang3::memory<T>::try_reserve(gptr<T>& ptr, const gptr<gptr<T>>& atom)
 }
 
 template<typename T>
-void dds::dang3::memory<T>::unreserve(const gptr<T>& ptr)
+void dds::dang6::memory<T>::unreserve(const gptr<T>& ptr)
 {
 	gptr<gptr<T>> temp = reservation;
 	for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
@@ -213,7 +213,7 @@ void dds::dang3::memory<T>::unreserve(const gptr<T>& ptr)
 }
 
 template<typename T>
-void dds::dang3::memory<T>::empty()
+void dds::dang6::memory<T>::empty()
 {	
 	std::vector<gptr<T>>	plist;		// contain non-null hazard pointers
 	std::vector<gptr<T>>	new_dlist;	// be dlist after finishing the Scan function
@@ -265,4 +265,4 @@ void dds::dang3::memory<T>::empty()
 	list_ret = std::move(new_dlist);
 }
 
-#endif /* MEMORY_DANG3_H */
+#endif /* MEMORY_DANG6_H */

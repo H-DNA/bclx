@@ -189,7 +189,8 @@ int main()
 		left = mid;
 	}
 	else //if (left == right)
-		std::cout << "Do nothing!\n";
+		if (BCL::rank() == MASTER_UNIT)
+			std::cout << "Do nothing!\n";
 
         if (BCL::rank() == MASTER_UNIT)
         {
