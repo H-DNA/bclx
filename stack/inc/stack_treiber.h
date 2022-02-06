@@ -30,6 +30,8 @@ namespace ts
 		using namespace dang5;
 	#elif defined	MEM_DANG6
 		using namespace dang6;
+	#elif defined	MEM_DANG7
+		using namespace dang7;
 	#else	// No Memory Reclamation
 		using namespace nmr;
 	#endif
