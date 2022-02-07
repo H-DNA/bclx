@@ -101,6 +101,9 @@ dds::ibr::memory<T>::~memory()
 template<typename T>
 dds::gptr<T> dds::ibr::memory<T>::malloc()
 {
+	// debugging
+	printf("[%lu]CP1\n", BCL::rank());
+
 	++counter;
 	if (counter % EPOCH_FREQ == 0)
 		BCL::fao_sync(epoch, uint32_t(1), BCL::plus<uint32_t>{});	// one RMA
@@ -124,11 +127,18 @@ dds::gptr<T> dds::ibr::memory<T>::malloc()
 	{
 		if (pool.ptr < capacity)
 		{
+			// debugging
+			printf("[%lu]CP2\n", BCL::rank());
+
 			gptr<T> addr = {pool.rank, pool.ptr + sizeof(pool.rank)};
 			gptr<uint32_t> temp = {pool.rank, pool.ptr};
 			uint32_t timestamp = aget_sync(epoch);	// one RMA
 			BCL::store(timestamp, temp);
 			++pool;
+
+			// debugging
+			printf("[%lu]CP3\n", BCL::rank());
+
 			return addr;
 		}
 		else // if (pool.ptr == capacity)
