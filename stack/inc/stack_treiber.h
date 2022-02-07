@@ -22,7 +22,9 @@ namespace ts
 		using namespace ibr;
 	#elif defined	MEM_DANG
 		using namespace dang;
-	#elif defined 	MEM_DANG3
+	#elif defined 	MEM_DANG2
+		using namespace dang2;
+	#elif defined	MEM_DANG3
 		using namespace dang3;
 	#elif defined	MEM_DANG4
 		using namespace dang4;
@@ -30,8 +32,6 @@ namespace ts
 		using namespace dang5;
 	#elif defined	MEM_DANG6
 		using namespace dang6;
-	#elif defined	MEM_DANG7
-		using namespace dang7;
 	#else	// No Memory Reclamation
 		using namespace nmr;
 	#endif
