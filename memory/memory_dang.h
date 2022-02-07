@@ -44,7 +44,9 @@ private:
 	uint64_t		capacity;       // contain global memory capacity (bytes)
 	gptr<gptr<T>>		reservation;	// be an array of hazard pointers
 	std::vector<gptr<T>>	list_all;	// contain allocated elems
+	std::vector<gptr<T>>	list_ret;	// contain retired elems
 	std::vector<gptr<T>>	list_rec;	// contain reclaimed elems
+	uint64_t		counter;	// be a counter
 
 	void empty();
 };
@@ -68,6 +70,9 @@ dds::dang::memory<T>::memory()
 
         pool = pool_rep = BCL::alloc<block<T>>(TOTAL_OPS);
         capacity = pool.ptr + TOTAL_OPS * sizeof(block<T>);
+
+	counter = 0;
+	list_ret.reserve(HP_WINDOW);
 }
 
 template<typename T>
@@ -80,6 +85,21 @@ dds::dang::memory<T>::~memory()
 template<typename T>
 dds::gptr<T> dds::dang::memory<T>::malloc()
 {
+	++counter;
+	if (counter % HP_WINDOW == 0)
+	{
+		gptr<bool> temp;
+		for (uint64_t i = 0; i < list_all.size(); ++i)
+		{
+			temp = {list_all[i].rank, list_all[i].ptr - sizeof(list_all[i].rank)};
+			if (!BCL::aget_sync(temp))
+			{
+				list_rec.push_back(list_all[i]);
+				list_all.erase(list_all.begin() + i);
+			}
+		}
+	}
+
         // determine the global address of the new element
 	if (!list_rec.empty())
 	{
@@ -109,7 +129,17 @@ dds::gptr<T> dds::dang::memory<T>::malloc()
                 else // if (pool.ptr == capacity)
                 {
                         // try one more to reclaim global memory
-                        empty();
+			gptr<bool> temp;
+			for (uint64_t i = 0; i < list_all.size(); ++i)
+			{
+				temp = {list_all[i].rank, list_all[i].ptr - sizeof(list_all[i].rank)};
+				if (!BCL::aget_sync(temp))
+				{
+					list_rec.push_back(list_all[i]);
+					list_all.erase(list_all.begin() + i);
+				}
+			}
+
                         if (!list_rec.empty())
                         {
 				// tracing
@@ -132,11 +162,9 @@ dds::gptr<T> dds::dang::memory<T>::malloc()
 template<typename T>
 void dds::dang::memory<T>::free(const gptr<T>& ptr)
 {
-	gptr<bool> temp = {ptr.rank, ptr.ptr - sizeof(ptr.rank)};
-	BCL::aput_sync(false, temp);
-
-        if (list_all.size() >= HP_WINDOW)
-                empty();
+	list_ret.push_back(ptr);
+	if (list_ret.size() >= HP_WINDOW)
+		empty();
 }
 
 template<typename T>
@@ -200,7 +228,6 @@ void dds::dang::memory<T>::empty()
 	std::vector<gptr<T>>	new_dlist;	// is dlist after finishing the Scan function
 	gptr<gptr<T>> 		hp_temp;	// is a temporary variable
 	gptr<T>			addr;		// is a temporary variable
-	gptr<block<T>>		temp;		// is a temporary variable
 
 	plist.reserve(HP_TOTAL);
 	new_dlist.reserve(HP_TOTAL);
@@ -224,13 +251,11 @@ void dds::dang::memory<T>::empty()
 	plist.resize(std::unique(plist.begin(), plist.end()) - plist.begin());
 
 	// Stage 3
-	temp.rank = BCL::rank();
-        while (!list_all.empty())
+        while (!list_ret.empty())
 	{
-		addr = list_all.back();
-		list_all.pop_back();
-		temp.ptr = addr.ptr - sizeof(addr.rank);
-		if (BCL::aget_sync(temp).taken || std::binary_search(plist.begin(), plist.end(), addr))
+		addr = list_ret.back();
+		list_ret.pop_back();
+		if (std::binary_search(plist.begin(), plist.end(), addr))
 			new_dlist.push_back(addr);
 		else
 		{
@@ -239,12 +264,14 @@ void dds::dang::memory<T>::empty()
 				++elem_rc;
 			#endif
 
-			list_rec.push_back(addr);
+			// help another process reclaim a data element
+			gptr<bool> temp = {addr.rank, addr.ptr - sizeof(addr.rank)};
+			BCL::aput_sync(false, temp);
 		}
 	}
 
 	// Stage 4
-	list_all = std::move(new_dlist);
+	list_ret = std::move(new_dlist);
 }
 
 #endif /* MEMORY_DANG_H */

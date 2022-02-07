@@ -74,6 +74,7 @@ dds::dang3::memory<T>::memory()
 	}
 
 	counter = 0;
+	list_ret.reserve(HP_WINDOW);
 	for (uint64_t i = 0; i < BCL::nprocs(); ++i)
 	{
 		buffers.push_back(std::vector<gptr<T>>());
@@ -102,10 +103,7 @@ dds::gptr<T> dds::dang3::memory<T>::malloc()
 		{
 			std::vector<gptr<T>> temp;
 			if (queues[BCL::rank()][i].dequeue(temp))
-			{
-				//printf("[%lu]%lu\n", BCL::rank(), temp.size());
 				list_rec.insert(list_rec.end(), temp.begin(), temp.end());
-			}
 		}
 
         // determine the global address of the new element
