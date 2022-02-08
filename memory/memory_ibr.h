@@ -101,9 +101,6 @@ dds::ibr::memory<T>::~memory()
 template<typename T>
 dds::gptr<T> dds::ibr::memory<T>::malloc()
 {
-	// debugging
-	printf("[%lu]CP1\n", BCL::rank());
-
 	++counter;
 	if (counter % EPOCH_FREQ == 0)
 		BCL::fao_sync(epoch, uint32_t(1), BCL::plus<uint32_t>{});	// one RMA
@@ -116,11 +113,18 @@ dds::gptr<T> dds::ibr::memory<T>::malloc()
 			elem_ru++;
 		#endif
 
+		// debugging
+		printf("[%lu]CP11\n", BCL::rank());
+
 		gptr<block<T>> addr = list_rec.back();
 		list_rec.pop_back();
 		gptr<uint32_t> temp = {addr.rank, addr.ptr};
 		uint32_t timestamp = aget_sync(epoch);	// one RMA
 		BCL::rput_sync(timestamp, temp);	// one RMA
+
+		// debugging
+		printf("[%lu]CP12\n", BCL::rank());
+
 		return {addr.rank, addr.ptr + sizeof(addr.rank)};
 	}
 	else // the list of reclaimed global empty is empty
@@ -128,7 +132,7 @@ dds::gptr<T> dds::ibr::memory<T>::malloc()
 		if (pool.ptr < capacity)
 		{
 			// debugging
-			printf("[%lu]CP2\n", BCL::rank());
+			printf("[%lu]CP21\n", BCL::rank());
 
 			gptr<T> addr = {pool.rank, pool.ptr + sizeof(pool.rank)};
 			gptr<uint32_t> temp = {pool.rank, pool.ptr};
@@ -137,7 +141,7 @@ dds::gptr<T> dds::ibr::memory<T>::malloc()
 			++pool;
 
 			// debugging
-			printf("[%lu]CP3\n", BCL::rank());
+			printf("[%lu]CP22\n", BCL::rank());
 
 			return addr;
 		}
