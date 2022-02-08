@@ -114,7 +114,7 @@ dds::gptr<T> dds::ibr::memory<T>::malloc()
 		#endif
 
 		// debugging
-		printf("[%lu]CP11\n", BCL::rank());
+		//printf("[%lu]CP11\n", BCL::rank());
 
 		gptr<block<T>> addr = list_rec.back();
 		list_rec.pop_back();
@@ -123,7 +123,7 @@ dds::gptr<T> dds::ibr::memory<T>::malloc()
 		BCL::rput_sync(timestamp, temp);	// one RMA
 
 		// debugging
-		printf("[%lu]CP12\n", BCL::rank());
+		//printf("[%lu]CP12\n", BCL::rank());
 
 		return {addr.rank, addr.ptr + sizeof(addr.rank)};
 	}
@@ -132,7 +132,7 @@ dds::gptr<T> dds::ibr::memory<T>::malloc()
 		if (pool.ptr < capacity)
 		{
 			// debugging
-			printf("[%lu]CP21\n", BCL::rank());
+			//printf("[%lu]CP21\n", BCL::rank());
 
 			gptr<T> addr = {pool.rank, pool.ptr + sizeof(pool.rank)};
 			gptr<uint32_t> temp = {pool.rank, pool.ptr};
@@ -141,7 +141,7 @@ dds::gptr<T> dds::ibr::memory<T>::malloc()
 			++pool;
 
 			// debugging
-			printf("[%lu]CP22\n", BCL::rank());
+			//printf("[%lu]CP22\n", BCL::rank());
 
 			return addr;
 		}
@@ -170,6 +170,9 @@ dds::gptr<T> dds::ibr::memory<T>::malloc()
 template<typename T>
 void dds::ibr::memory<T>::free(const gptr<T>& ptr)
 {
+	// debugging
+	printf("[%lu]CP31\n", BCL::rank());
+
 	gptr<block<T>> temp = {ptr.rank, ptr.ptr - sizeof(ptr.rank)};
 	gptr<uint32_t> temp2 = {temp.rank, temp.ptr};
 	uint32_t era_new = BCL::rget_sync(temp2);	// one RMA
@@ -177,6 +180,9 @@ void dds::ibr::memory<T>::free(const gptr<T>& ptr)
 	list_ret.push_back({era_new, era_del, temp});
 	if (list_ret.size() % EMPTY_FREQ == 0)
 		empty();
+
+	// debugging
+	printf("[%lu]CP32\n", BCL::rank());
 }
 
 template<typename T>
@@ -218,6 +224,9 @@ void dds::ibr::memory<T>::unreserve(const gptr<T>& ptr)
 template<typename T>
 void dds::ibr::memory<T>::empty()
 {
+	// debugging
+	printf("[%lu]CP41\n", BCL::rank());
+
 	std::vector<reser>	reservations;
 	gptr<reser>		temp = reservation;
 	reser			value;
@@ -247,6 +256,9 @@ void dds::ibr::memory<T>::empty()
 			list_ret.erase(list_ret.begin() + i);
 		}
 	}
+
+	// debugging
+	printf("[%lu]CP42\n", BCL::rank());
 }
 
 #endif /* MEMORY_IBR_H */
