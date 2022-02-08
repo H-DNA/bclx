@@ -96,12 +96,24 @@ dds::ibr::memory<T>::~memory()
 	printf("[%lu]CP51\n", BCL::rank());
 
 	BCL::dealloc<block<T>>(pool_rep);
-	BCL::dealloc<reser>(reservation);
-	epoch.rank = BCL::rank();
-	BCL::dealloc<uint32_t>(epoch);
 
 	// debugging
 	printf("[%lu]CP52\n", BCL::rank());
+
+	BCL::dealloc<reser>(reservation);
+
+	// debugging
+	printf("[%lu]CP53\n", BCL::rank());
+
+	epoch.rank = BCL::rank();
+
+	// debugging
+	printf("[%lu]CP54\n", BCL::rank());
+
+	BCL::dealloc<uint32_t>(epoch);
+
+	// debugging
+	printf("[%lu]CP55\n", BCL::rank());
 }
 
 template<typename T>
@@ -119,36 +131,22 @@ dds::gptr<T> dds::ibr::memory<T>::malloc()
 			elem_ru++;
 		#endif
 
-		// debugging
-		//printf("[%lu]CP11\n", BCL::rank());
-
 		gptr<block<T>> addr = list_rec.back();
 		list_rec.pop_back();
 		gptr<uint32_t> temp = {addr.rank, addr.ptr};
 		uint32_t timestamp = aget_sync(epoch);	// one RMA
 		BCL::rput_sync(timestamp, temp);	// one RMA
-
-		// debugging
-		//printf("[%lu]CP12\n", BCL::rank());
-
 		return {addr.rank, addr.ptr + sizeof(addr.rank)};
 	}
 	else // the list of reclaimed global empty is empty
 	{
 		if (pool.ptr < capacity)
 		{
-			// debugging
-			//printf("[%lu]CP21\n", BCL::rank());
-
 			gptr<T> addr = {pool.rank, pool.ptr + sizeof(pool.rank)};
 			gptr<uint32_t> temp = {pool.rank, pool.ptr};
 			uint32_t timestamp = aget_sync(epoch);	// one RMA
 			BCL::store(timestamp, temp);
 			++pool;
-
-			// debugging
-			//printf("[%lu]CP22\n", BCL::rank());
-
 			return addr;
 		}
 		else // if (pool.ptr == capacity)
@@ -176,9 +174,6 @@ dds::gptr<T> dds::ibr::memory<T>::malloc()
 template<typename T>
 void dds::ibr::memory<T>::free(const gptr<T>& ptr)
 {
-	// debugging
-	//printf("[%lu]CP31\n", BCL::rank());
-
 	gptr<block<T>> temp = {ptr.rank, ptr.ptr - sizeof(ptr.rank)};
 	gptr<uint32_t> temp2 = {temp.rank, temp.ptr};
 	uint32_t era_new = BCL::rget_sync(temp2);	// one RMA
@@ -186,9 +181,6 @@ void dds::ibr::memory<T>::free(const gptr<T>& ptr)
 	list_ret.push_back({era_new, era_del, temp});
 	if (list_ret.size() % EMPTY_FREQ == 0)
 		empty();
-
-	// debugging
-	//printf("[%lu]CP32\n", BCL::rank());
 }
 
 template<typename T>
@@ -230,9 +222,6 @@ void dds::ibr::memory<T>::unreserve(const gptr<T>& ptr)
 template<typename T>
 void dds::ibr::memory<T>::empty()
 {
-	// debugging
-	//printf("[%lu]CP41\n", BCL::rank());
-
 	std::vector<reser>	reservations;
 	gptr<reser>		temp = reservation;
 	reser			value;
@@ -262,9 +251,6 @@ void dds::ibr::memory<T>::empty()
 			list_ret.erase(list_ret.begin() + i);
 		}
 	}
-
-	// debugging
-	//printf("[%lu]CP42\n", BCL::rank());
 }
 
 #endif /* MEMORY_IBR_H */
