@@ -79,7 +79,7 @@ dds::ibr::memory<T>::memory()
 	else // if (BCL::rank() != MASTER_UNIT)
 		epoch.rank = MASTER_UNIT;
 
-	gptr<reser> reservation = BCL::alloc<reser>(1);
+	reservation = BCL::alloc<reser>(1);
 	BCL::store({MIN, MIN}, reservation);
 
 	pool = pool_rep = BCL::alloc<block<T>>(TOTAL_OPS);
@@ -92,28 +92,10 @@ dds::ibr::memory<T>::memory()
 template<typename T>
 dds::ibr::memory<T>::~memory()
 {
-	// debugging
-	printf("[%lu]CP51\n", BCL::rank());
-
 	BCL::dealloc<block<T>>(pool_rep);
-
-	// debugging
-	printf("[%lu]CP52\n", BCL::rank());
-
 	BCL::dealloc<reser>(reservation);
-
-	// debugging
-	printf("[%lu]CP53\n", BCL::rank());
-
 	epoch.rank = BCL::rank();
-
-	// debugging
-	printf("[%lu]CP54\n", BCL::rank());
-
 	BCL::dealloc<uint32_t>(epoch);
-
-	// debugging
-	printf("[%lu]CP55\n", BCL::rank());
 }
 
 template<typename T>
@@ -226,6 +208,7 @@ void dds::ibr::memory<T>::empty()
 	gptr<reser>		temp = reservation;
 	reser			value;
 	reservations.reserve(BCL::nprocs());
+
 	for (uint64_t i = 0; i < BCL::nprocs(); ++i)
 	{
 		temp.rank = i;
