@@ -92,10 +92,16 @@ dds::ibr::memory<T>::memory()
 template<typename T>
 dds::ibr::memory<T>::~memory()
 {
+	// debugging
+	printf("[%lu]CP51\n", BCL::rank());
+
 	BCL::dealloc<block<T>>(pool_rep);
 	BCL::dealloc<reser>(reservation);
 	epoch.rank = BCL::rank();
 	BCL::dealloc<uint32_t>(epoch);
+
+	// debugging
+	printf("[%lu]CP52\n", BCL::rank());
 }
 
 template<typename T>
@@ -171,7 +177,7 @@ template<typename T>
 void dds::ibr::memory<T>::free(const gptr<T>& ptr)
 {
 	// debugging
-	printf("[%lu]CP31\n", BCL::rank());
+	//printf("[%lu]CP31\n", BCL::rank());
 
 	gptr<block<T>> temp = {ptr.rank, ptr.ptr - sizeof(ptr.rank)};
 	gptr<uint32_t> temp2 = {temp.rank, temp.ptr};
@@ -182,7 +188,7 @@ void dds::ibr::memory<T>::free(const gptr<T>& ptr)
 		empty();
 
 	// debugging
-	printf("[%lu]CP32\n", BCL::rank());
+	//printf("[%lu]CP32\n", BCL::rank());
 }
 
 template<typename T>
@@ -225,7 +231,7 @@ template<typename T>
 void dds::ibr::memory<T>::empty()
 {
 	// debugging
-	printf("[%lu]CP41\n", BCL::rank());
+	//printf("[%lu]CP41\n", BCL::rank());
 
 	std::vector<reser>	reservations;
 	gptr<reser>		temp = reservation;
@@ -258,7 +264,7 @@ void dds::ibr::memory<T>::empty()
 	}
 
 	// debugging
-	printf("[%lu]CP42\n", BCL::rank());
+	//printf("[%lu]CP42\n", BCL::rank());
 }
 
 #endif /* MEMORY_IBR_H */
