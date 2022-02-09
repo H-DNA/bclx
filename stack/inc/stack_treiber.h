@@ -16,6 +16,8 @@ namespace ts
 		using namespace ebr;
 	#elif defined	MEM_EBR2
 		using namespace ebr2;
+	#elif defined 	MEM_EBR3
+		using namespace ebr3;
 	#elif defined 	MEM_HE
 		using namespace he;
 	#elif defined	MEM_IBR

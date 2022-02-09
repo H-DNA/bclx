@@ -2,8 +2,9 @@
 #define MEMORY_EBR3_h
 
 #include <cstdint>	// uint64_t...
-#include <limits>	// std::numeric_limits...
 #include <vector>	// std::vector...
+#include <utility>	// std::move...
+#include <iterator>	// std::back_inserter...
 
 namespace dds
 {
@@ -26,21 +27,19 @@ public:
 	void unreserve(const gptr<T>&);		// stop protecting a global pointer
 
 private:
-	const uint64_t		MIN		= std::numeric_limits<uint64_t>::min();
-	const uint64_t		EPOCH_FREQ	= BCL::nprocs();	// freq. of increasing epoch
 	const uint64_t		EMPTY_FREQ	= BCL::nprocs() * 2;	// freq. of reclaiming retired
 
 	gptr<T>			pool;		// allocate global memory
 	gptr<T>			pool_rep;	// deallocate global memory
 	uint64_t		capacity;	// contain global memory capacity (bytes)
-	uint64_t		epoch;		// a local epoch counter
+	std::vector<uint64_t>	knowledge;	// knowledge about the other processes
 	gptr<uint64_t>		reservation;	// a SWMR variable
 	uint64_t		counter;	// a local counter
 	std::vector<gptr<T>>	list_ret;	// contain retired elems
 	std::vector<gptr<T>>	list_rec;	// contain reclaimed elems
 
 	void empty();
-}
+};
 
 } /* namespace ebr3 */
 
@@ -49,56 +48,129 @@ private:
 template<typename T>
 dds::ebr3::memory<T>::memory()
 {
-	// TODO
+	if (BCL::rank() == MASTER_UNIT)
+		mem_manager = "EBR3";
+
+	reservation = BCL::alloc<uint64_t>(1);
+	BCL::store(uint64_t(0), reservation);
+
+	pool = pool_rep = BCL::alloc<T>(TOTAL_OPS);
+	capacity = pool.ptr + TOTAL_OPS * sizeof(T);
+
+	for (uint64_t i = 0; i < BCL::nprocs(); ++i)
+		knowledge.push_back(0);
+	counter = 0;
 }
 
 template<typename T>
 dds::ebr3::memory<T>::~memory()
 {
-	// TODO
+	BCL::dealloc<T>(pool_rep);
+	BCL::dealloc<uint64_t>(reservation);
 }
 
 template<typename T>
 dds::gptr<T> dds::ebr3::memory<T>::malloc()
 {
-	// TODO
+	// determine the global address of the new element
+	if (!list_rec.empty())
+	{
+		// tracing
+		#ifdef	TRACING
+			elem_ru++;
+		#endif
+
+		gptr<T> addr = list_rec.back();
+		list_rec.pop_back();
+		return addr;
+	}
+	else // the list of reclaimed global empty is empty
+	{
+		if (pool.ptr < capacity)
+			return pool++;
+		else // if (pool.ptr == capacity)
+		{
+			if (!list_rec.empty())
+			{
+				// tracing
+				#ifdef	TRACING
+					elem_ru++;
+				#endif
+
+				gptr<T> addr = list_rec.back();
+				list_rec.pop_back();
+				return addr;
+			}
+		}
+	}
+	return nullptr;
 }
 
 template<typename T>
 void dds::ebr3::memory<T>::free(const gptr<T>& ptr)
 {
-	// TODO
+	list_ret.push_back(ptr);
+	++counter;
 }
 
 template<typename T>
 void dds::ebr3::memory<T>::op_begin()
 {
-	// TODO
+	BCL::fao_sync(reservation, uint64_t(1), BCL::plus<uint64_t>{});
+	if (counter % EMPTY_FREQ == 0)
+		empty();
 }
 
 template<typename T>
 void dds::ebr3::memory<T>::op_end()
 {
-	// TODO
+	BCL::fao_sync(reservation, uint64_t(1), BCL::plus<uint64_t>{});
 }
 
 template<typename T>
 bool dds::ebr3::memory<T>::try_reserve(gptr<T>&			ptr,
 					const gptr<gptr<T>>& 	atom)
 {
-	// TODO
+	return true;
 }
 
 template<typename T>
 void dds::ebr3::memory<T>::unreserve(const gptr<T>& ptr)
 {
-	// TODO
+	/* No-op */
 }
 
 template<typename T>
 void dds::ebr3::memory<T>::empty()
 {
-	//  TODO
+	gptr<uint64_t>		temp = reservation;
+	std::vector<uint64_t>	reservations;
+	uint64_t		value;
+	reservations.reserve(BCL::nprocs());
+	for (uint64_t i = 0; i < BCL::nprocs(); ++i)
+	{
+		temp.rank = i;
+		value = BCL::aget_sync(reservation);	// one RMA
+		reservations.push_back(value);
+	}
+
+	bool conflict = false;
+	for (uint64_t i = 0; i < BCL::nprocs(); ++i)
+	{
+		if (reservations[i] % 2 != 0 && reservations[i] == knowledge[i])
+			conflict = true;
+		knowledge[i] = reservations[i];
+	}
+
+	if (!conflict)
+	{
+		#ifdef	TRACING
+			elem_rc += list_ret.size();
+		#endif
+
+		std::move(list_ret.begin(), list_ret.end(), std::back_inserter(list_rec));
+		list_ret.clear();
+	}
 }
 
 #endif /* MEMORY_EBR3_H */

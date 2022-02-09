@@ -66,8 +66,6 @@ dds::ebr::memory<T>::memory()
 
 	counter = 0;
 	curr = MIN;
-	for (uint32_t i = 0; i < 3; ++i)
-		list_ret[i].reserve(EPOCH_FREQ);
 }
 
 template<typename T>
