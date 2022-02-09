@@ -12,43 +12,44 @@ namespace dds
 namespace ebr2
 {
 	
-	template<typename T>
-	struct block
-	{
-		uint64_t	era_del;
-		gptr<T>		ptr;
-	};
+template<typename T>
+struct block
+{
+	uint64_t	era_del;
+	gptr<T>		ptr;
+};
 
-	template<typename T>
-	class memory
-	{
-	public:
-		memory();
-		~memory();
-		gptr<T> malloc();			// allocate global memory
-		void free(const gptr<T>&);		// deallocate global memory
-		void op_begin();			// indicate the beginning of a concurrent operation
-		void op_end();				// indicate the end of a concurrent operation
-		bool try_reserve(gptr<T>&,		// try to protect a global pointer from reclamation
-				const gptr<gptr<T>>&);
-		void unreserve(const gptr<T>&);		// stop protecting a global pointer
+template<typename T>
+class memory
+{
+public:
+	memory();
+	~memory();
+	gptr<T> malloc();			// allocate global memory
+	void free(const gptr<T>&);		// deallocate global memory
+	void op_begin();			// indicate the beginning of a concurrent operation
+	void op_end();				// indicate the end of a concurrent operation
+	bool try_reserve(gptr<T>&,		// try to protect a global pointer from reclamation
+			const gptr<gptr<T>>&);
+	void unreserve(const gptr<T>&);		// stop protecting a global pointer
 
-	private:
-		const uint64_t		MAX 		= std::numeric_limits<uint64_t>::max();
-		const uint64_t		EPOCH_FREQ 	= BCL::nprocs();	// freq. of increasing epoch
-		const uint64_t		EMPTY_FREQ 	= BCL::nprocs() * 2;	// freq. of reclaiming retired
+private:
+	const uint64_t		MAX 		= std::numeric_limits<uint64_t>::max();
+	const uint64_t		EPOCH_FREQ 	= BCL::nprocs();	// freq. of increasing epoch
+	const uint64_t		EMPTY_FREQ 	= BCL::nprocs() * 2;	// freq. of reclaiming retired
 
-		gptr<T>			pool;		// allocate global memory
-		gptr<T>			pool_rep;	// deallocate global memory
-		uint64_t		capacity;	// contain global memory capacity (bytes)
-		gptr<uint64_t>		epoch;		// a shared counter
-		gptr<uint64_t>		reservation;	// a SWMR variable
-		uint64_t		counter;	// a local counter
-		std::vector<block<T>>	list_ret;	// contain retired elems
-		std::vector<gptr<T>>	list_rec;	// contain reclaimed elems
+	gptr<T>			pool;		// allocate global memory
+	gptr<T>			pool_rep;	// deallocate global memory
+	uint64_t		capacity;	// contain global memory capacity (bytes)
+	gptr<uint64_t>		epoch;		// a shared counter
+	gptr<uint64_t>		reservation;	// a SWMR variable
+	uint64_t		counter;	// a local counter
+	std::vector<block<T>>	list_ret;	// contain retired elems
+	std::vector<gptr<T>>	list_rec;	// contain reclaimed elems
 
-		void empty();
-	};
+	void empty();
+};
+
 } /* namespace ebr2 */
 
 } /* namespace dds */

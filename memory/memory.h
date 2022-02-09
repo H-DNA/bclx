@@ -13,6 +13,8 @@
 
 #include "memory_ebr2.h"	// Using Epoch-Based Reclamation [Wen et al., PPoPP'18]
 
+#include "memory_ebr3.h"	// Using Epoch-Based Reclamation [Herlihy et al., Book'20]
+
 #include "memory_he.h"		// Using Hazard Eras [Ramalhete & Correia, SPAA'17]
 
 #include "memory_ibr.h"		// Using Interval-Based Reclamation (2GEIBR) [Wen et al., PPoPP'18]
