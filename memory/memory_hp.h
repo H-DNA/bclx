@@ -134,29 +134,34 @@ void dds::hp::memory<T>::op_end()
 template<typename T>
 bool dds::hp::memory<T>::try_reserve(gptr<T>& ptr, const gptr<gptr<T>>& atom)
 {
-	gptr<gptr<T>> temp = reservation;
-        for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
-		if (BCL::aget_sync(temp) == NULL_PTR)
-		{
-			gptr<T> ptr_new;
-			while (true)
+	if (ptr == nullptr)
+		return true;
+	else // if (ptr != nullptr)
+	{
+		gptr<gptr<T>> temp = reservation;
+        	for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
+			if (BCL::aget_sync(temp) == NULL_PTR)
 			{
-                		BCL::aput_sync(ptr, temp);
-				ptr_new = BCL::aget_sync(atom);
-				if (ptr_new == nullptr)
+				gptr<T> ptr_new;
+				while (true)
 				{
-					BCL::aput_sync(NULL_PTR, temp);
-					return false;
+                			BCL::aput_sync(ptr, temp);
+					ptr_new = BCL::aget_sync(atom);
+					if (ptr_new == nullptr)
+					{
+						BCL::aput_sync(NULL_PTR, temp);
+						return false;
+					}
+					if (ptr_new == ptr)
+						return true;
+					ptr = ptr_new;
 				}
-				if (ptr_new == ptr)
-					return true;
-				ptr = ptr_new;
 			}
-		}
-		else // if (BCL::aget_sync(temp) != NULL_PTR)
-                	++temp;
-	printf("HP:Error\n");
-	return false;
+			else // if (BCL::aget_sync(temp) != NULL_PTR)
+                		++temp;
+		printf("HP:Error\n");
+		return false;
+	}
 }
 
 template<typename T>
