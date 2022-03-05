@@ -9,8 +9,8 @@ namespace dds
 
 	/* Configurations */
 	#define	TRACING
-	#define	MEM_EBR3
-	//#define	DEBUGGING
+	#define	MEM_HP
+	#define	DEBUGGING
 
 	const uint64_t	TOTAL_OPS	=	exp2l(15);
 	const uint32_t	WORKLOAD	=	1;		//us

@@ -11,78 +11,77 @@ namespace dds
 namespace ebs2_na
 {
 
-	/* Macros */
-	#ifdef MEM_REC
-		using namespace hp;
-	#else
-		using namespace dang3;
-	#endif
+/* Macros */
+#ifdef	MEM_HP
+	using namespace hp;
+#else	// No Memory Reclamation
+	using namespace nmr;
+#endif
 
-	/* Data types */
-	struct adapt_params
-	{
-		uint32_t 	count;
-		float 		factor;
-	};
+/* Data types */
+struct adapt_params
+{
+	uint32_t 	count;
+	float 		factor;
+};
 
-        template <typename T>
-        struct elem
-        {
-                gptr<elem<T>>   next;
-                T               value;
-        };
+template<typename T>
+struct elem
+{
+	gptr<elem<T>>	next;
+	T		value;
+};
 
-	template <typename T>
-	struct unit_info
-	{
-		gptr<elem<T>>	itsElem;
-		uint32_t	rank;
-		char		op;
-	};
+template<typename T>
+struct unit_info
+{
+	gptr<elem<T>>	itsElem;
+	uint32_t	rank;
+	char		op;
+};
 
-	template <typename T>
-	class stack
-	{
-	public:
-		stack();			//collective
-		stack(const uint64_t &num);	//collective
-		~stack();			//collective
-		bool push(const T &value);	//non-collective
-		bool pop(T &value);		//non-collective
-		void print();			//collective
+template<typename T>
+class stack
+{
+public:
+	stack();			// collective
+	stack(const uint64_t &num);	// collective
+	~stack();			// collective
+	bool push(const T &value);	// non-collective
+	bool pop(T &value);		// non-collective
+	void print();			// collective
 
-	private:
-       		const gptr<elem<T>> 		NULL_PTR_E = 	nullptr;
-		const gptr<unit_info<T>>	NULL_PTR_U = 	nullptr;
-        	const uint32_t       		NULL_UNIT =	-1;
-        	const uint32_t       		COUNT_INIT =	5;
-                const uint32_t			COUNT_MAX =     2 * COUNT_INIT;
-		const float			FACTOR_INIT =	0.5;
-        	const float     		FACTOR_MIN =	0.0;
-        	const float     		FACTOR_MAX =	1.0;
-        	#define         		COLL_SIZE	BCL::nprocs()
-                const bool        		PUSH = 		true;
-                const bool        		POP =		false;
-                const bool        		SHRINK = 	true;
-                const bool        		ENLARGE =	false;
+private:
+       	const gptr<elem<T>> 		NULL_PTR_E	= nullptr;
+	const gptr<unit_info<T>>	NULL_PTR_U	= nullptr;
+        const uint32_t       		NULL_UNIT	= -1;
+        const uint32_t       		COUNT_INIT	= 5;
+	const uint32_t			COUNT_MAX	= 2 * COUNT_INIT;
+	const float			FACTOR_INIT	= 0.5;
+        const float     		FACTOR_MIN	= 0.0;
+        const float     		FACTOR_MAX	= 1.0;
+        #define         		COLL_SIZE	BCL::nprocs()
+	const bool			PUSH		= true;
+	const bool			POP		= false;
+	const bool			SHRINK		= true;
+	const bool			ENLARGE		= false;
 
-		memory<elem<T>>			mem;		//contains essential stuffs to manage globmem of elems
-                gptr<gptr<elem<T>>>		top;		//contains global memory address of the dummy node
-		gptr<gptr<unit_info<T>>>	location;	//contains global mem add of a gptr of a @unit_info
-		gptr<unit_info<T>>		p;
-		gptr<uint32_t>			collision;	//contains the rank of the unit trying to collide
-                adapt_params			adapt;          //contains the adaptative elimination backoff
+	memory<elem<T>>			mem;		// contain essential stuffs to manage globmem of elems
+	gptr<gptr<elem<T>>>		top;		// contain global memory address of the dummy node
+	gptr<gptr<unit_info<T>>>	location;	// contain global mem add of a gptr of a @unit_info
+	gptr<unit_info<T>>		p;
+	gptr<uint32_t>			collision;	// contain the rank of the unit trying to collide
+	adapt_params			adapt;		// contain the adaptative elimination backoff
+	ta::na                          na;		//contains node information
 
-		ta::na                          na;             //contains node information
-
-		bool push_fill(const T &value);
-		uint32_t get_position();
-		void adapt_width(const bool &);
-		bool try_collision(const gptr<unit_info<T>> &, const uint32_t &);
-		void finish_collision();
-                bool try_perform_stack_op();
-                void less_op();
-	};
+	bool push_fill(const T &value);
+	uint32_t get_position();
+	void adapt_width(const bool &);
+	bool try_collision(const gptr<unit_info<T>> &, const uint32_t &);
+	void finish_collision();
+	bool try_perform_stack_op();
+	void less_op();
+};
 
 } /* namespace ebs2_na */
 
@@ -91,7 +90,7 @@ namespace ebs2_na
 template<typename T>
 dds::ebs2_na::stack<T>::stack()
 {
-        //synchronize
+        // synchronize
 	BCL::barrier();
 
         location = BCL::alloc<gptr<unit_info<T>>>(1);
@@ -110,17 +109,17 @@ dds::ebs2_na::stack<T>::stack()
                 BCL::store(NULL_PTR_E, top);
 		stack_name = "EBS2_NA";
 	}
-	else //if (BCL::rank() != MASTER_UNIT)
+	else // if (BCL::rank() != MASTER_UNIT)
 		top.rank = MASTER_UNIT;
 
-	//synchronize
+	// synchronize
 	BCL::barrier();
 }
 
 template<typename T>
 dds::ebs2_na::stack<T>::stack(const uint64_t &num)
 {
-	//synchronize
+	// synchronize
 	BCL::barrier();
 
 	location = BCL::alloc<gptr<unit_info<T>>>(1);
@@ -142,10 +141,10 @@ dds::ebs2_na::stack<T>::stack(const uint64_t &num)
 		for (uint64_t i = 0; i < num; ++i)
 		push_fill(i);
 	}
-	else //if (BCL::rank() != MASTER_UNIT)
+	else // if (BCL::rank() != MASTER_UNIT)
 		top.rank = MASTER_UNIT;
 
-	//synchronize
+	// synchronize
 	BCL::barrier();
 }
 
@@ -173,7 +172,7 @@ bool dds::ebs2_na::stack<T>::push(const T &value)
 
 	temp.rank = BCL::rank();
 	temp.op = PUSH;
-	//allocate global memory to the new elem
+	// allocate global memory to the new elem
 	temp.itsElem = mem.malloc();
 	if (temp.itsElem == nullptr)
 	{
@@ -183,9 +182,9 @@ bool dds::ebs2_na::stack<T>::push(const T &value)
 	}
 
 	tempAddr = {temp.itsElem.rank, temp.itsElem.ptr + sizeof(gptr<elem<T>>)};
-	#ifdef MEM_REC
+	#ifdef	MEM_HP
 		BCL::rput_sync(value, tempAddr);
-	#else
+	#else	// No Memory Reclamation
 		BCL::store(value, tempAddr);
 	#endif
 	BCL::store(temp, p);
@@ -216,7 +215,7 @@ bool dds::ebs2_na::stack<T>::pop(T &value)
 		gptr<T>	tempAddr3 = {tempAddr2.rank, tempAddr2.ptr + sizeof(gptr<elem<T>>)};
 		value = BCL::rget_sync(tempAddr3);
 
-                //deallocate global memory of the popped elem
+                // deallocate global memory of the popped elem
                 mem.free(tempAddr2);
 
 		return true;
@@ -226,7 +225,7 @@ bool dds::ebs2_na::stack<T>::pop(T &value)
 template<typename T>
 void dds::ebs2_na::stack<T>::print()
 {
-	//synchronize
+	// synchronize
 	BCL::barrier();
 
 	if (BCL::rank() == MASTER_UNIT)
@@ -242,7 +241,7 @@ void dds::ebs2_na::stack<T>::print()
                 }
 	}
 
-	//synchronize
+	// synchronize
 	BCL::barrier();
 }
 
@@ -257,7 +256,7 @@ bool dds::ebs2_na::stack<T>::push_fill(const T &value)
 
                 temp.rank = BCL::rank();
                 temp.op = PUSH;
-                //allocate global memory to the new elem
+                // allocate global memory to the new elem
                 temp.itsElem = mem.malloc();
                 if (temp.itsElem == nullptr)
                 {
@@ -265,92 +264,93 @@ bool dds::ebs2_na::stack<T>::push_fill(const T &value)
                         return false;
                 }
 
-                //get top (from global memory to local memory)
+                // get top (from global memory to local memory)
                 oldTopAddr = BCL::load(top);
 
-                //update new element (global memory)
+                // update new element (global memory)
                 BCL::store({oldTopAddr, value}, temp.itsElem);
                 BCL::store(temp, p);
 
-                //update top (global memory)
+                // update top (global memory)
                 BCL::store(temp.itsElem, top);
-
-                return true;
         }
+
+	return true;
 }
 
 template<typename T>
 bool dds::ebs2_na::stack<T>::try_perform_stack_op()
 {
-	unit_info<T>		pVal;
-	gptr<elem<T>>		oldTopAddr;
-	gptr<gptr<elem<T>>>	tempAddr;
-
-	pVal = BCL::load(p);
+	unit_info<T> pVal = BCL::load(p);
 	if (pVal.op == PUSH)
 	{
-		gptr<gptr<elem<T>>>	newTopAddr;
+		// get top (from global memory to local memory)
+		gptr<elem<T>> oldTopAddr = BCL::aget_sync(top);
 
-		//get top (from global memory to local memory)
-		oldTopAddr = BCL::aget_sync(top);
+		// try to reserve top
+		if (!mem.try_reserve(oldTopAddr, top))
+			return false;
 
-		//update new element (global memory)
-        	tempAddr = {pVal.itsElem.rank, pVal.itsElem.ptr};
-		#ifdef MEM_REC
+		// update new element (global memory)
+        	gptr<gptr<elem<T>>> tempAddr = {pVal.itsElem.rank, pVal.itsElem.ptr};
+		#ifdef	MEM_HP
 			BCL::rput_sync(oldTopAddr, tempAddr);
-		#else
+		#else	// No Memory Reclamation
 			BCL::store(oldTopAddr, tempAddr);
 		#endif
 
-		//update top (global memory)
+		// update top (global memory)
 		if (BCL::cas_sync(top, oldTopAddr, pVal.itsElem) == oldTopAddr)
+		{	
+			// unreserve top
+			mem.unreserve(oldTopAddr);
+
 			return true;
-		return false;
+		}
+		else // if (BCL::cas_sync(top, oldTopAddr, pVal.itsElem) != oldTopAddr)
+		{
+			// unreserve top
+			mem.unreserve(oldTopAddr);
+
+			return false;
+		}
 	}
-	if (pVal.op == POP)
+	else // if (pVal.op == POP)
 	{
-		elem<T>		newTopVal;
-		gptr<elem<T>>	oldTopAddr2;
-		bool		res;
+                gptr<gptr<elem<T>>> tempAddr = {p.rank, p.ptr};
 
-                tempAddr = {p.rank, p.ptr};
+		// get top (from global memory to local memory)
+		gptr<elem<T>> oldTopAddr = BCL::aget_sync(top);
 
-		//do {
-			//get top (from global memory to local memory)
-			oldTopAddr = BCL::aget_sync(top);
+		if (oldTopAddr == nullptr)
+		{
+			BCL::store(NULL_PTR_E, tempAddr);
+			return true;
+		}
 
-			if (oldTopAddr == nullptr)
-			{
-				BCL::store(NULL_PTR_E, tempAddr);
+		// try to reserve top
+		if (!mem.try_reserve(oldTopAddr, top))
+			return false;
 
-				return true;
-			}
+		// get node (from global memory to local memory)
+		elem<T> newTopVal = BCL::rget_sync(oldTopAddr);
 
-			//update hazard pointers
-			/*BCL::aput_sync(oldTopAddr, mem.hp);
-			oldTopAddr2 = BCL::aget_sync(top);
-			/**/
-
-		//} while (oldTopAddr != oldTopAddr2);
-
-		//get node (from global memory to local memory)
-		newTopVal = BCL::rget_sync(oldTopAddr);
-
-		//update top
+		// update top
 		if (BCL::cas_sync(top, oldTopAddr, newTopVal.next) == oldTopAddr)
 		{
+			// unreserve top
+			mem.unreserve(oldTopAddr);
+
 			BCL::store(oldTopAddr, tempAddr);
-
-			res = true;
+			return true;
 		}
-		else
-			res = false;
+		else // if (BCL::cas_sync(top, oldTopAddr, newTopVal.next) != oldTopAddr)
+		{
+			// unreserve top
+			mem.unreserve(oldTopAddr);
 
-		//update hazard pointers
-		//BCL::aput_sync(NULL_PTR_E, mem.hp);
-		/**/
-
-		return res;
+			return false;
+		}
 	}
 }
 
@@ -361,13 +361,13 @@ uint32_t dds::ebs2_na::stack<T>::get_position()
 
 	if (na.size % 2 == 0)
 		min = round((na.size / 2 - 1) * (FACTOR_MAX - FACTOR_MIN - adapt.factor));
-	else //if (na.size % 2 != 0)
+	else // if (na.size % 2 != 0)
 		min = round(na.size / 2 * (FACTOR_MAX - FACTOR_MIN - adapt.factor));
 	max = round(na.size / 2 * (FACTOR_MAX - FACTOR_MIN + adapt.factor));
 
 	std::default_random_engine generator;
 	std::uniform_int_distribution<uint32_t> distribution(min, max);
-	return na.table[distribution(generator)];	//Generate number in the range min..max
+	return na.table[distribution(generator)];	// generate number in the range min..max
 }
 
 template<typename T>
@@ -377,17 +377,17 @@ void dds::ebs2_na::stack<T>::adapt_width(const bool &dir)
 	{
 		if (adapt.count > 0)
 			--adapt.count;
-		else //if (adapt.count == 0)
+		else // if (adapt.count == 0)
 		{
 			adapt.count = COUNT_INIT;
 			adapt.factor = std::max(adapt.factor / 2, FACTOR_MIN);
 		}
 	}
-	else //if (dir == ENLARGE)
+	else // if (dir == ENLARGE)
 	{
 		if (adapt.count < COUNT_MAX)
 			++adapt.count;
-		else //if (adapt.count == MAX_COUNT)
+		else // if (adapt.count == MAX_COUNT)
 		{
 			adapt.count = COUNT_INIT;
 			adapt.factor = std::min(2 * adapt.factor, FACTOR_MAX);
@@ -410,7 +410,7 @@ bool dds::ebs2_na::stack<T>::try_collision(const gptr<unit_info<T>> &q, const ui
 			return false;
 		}
 	}
-	else //if (pVal.op == POP)
+	else // if (pVal.op == POP)
 	{
 		if (BCL::cas_sync(location, q, NULL_PTR_U) == q)
 		{
@@ -451,22 +451,26 @@ void dds::ebs2_na::stack<T>::less_op()
 	gptr<unit_info<T>>	q;
 	backoff::backoff	bk(bk_init, bk_max);
 
-	//tracing
+	// tracing
 	#ifdef	TRACING
 		double		start;
 	#endif
 
 	while (true)
 	{
-		//tracing
+		// tracing
 		#ifdef	TRACING
 			start = MPI_Wtime();
 		#endif
 
+		// publish my @p
 		location.rank = myUID;
 		BCL::aput_sync(p, location);
+
+		// get the index of the target collision entry
 		pos = get_position();
 
+		// swap the target collision entry with my unit rank
 		collision.rank = pos;
 		do {
 			him = BCL::aget_sync(collision);
@@ -474,8 +478,10 @@ void dds::ebs2_na::stack<T>::less_op()
 
 		if (him != NULL_UNIT)
 		{
+			// get @q of the target unit
 			location.rank = him;
 			q = BCL::aget_sync(location);
+
 			if (q != nullptr)
 			{
 				qVal = BCL::rget_sync(q);
@@ -487,7 +493,7 @@ void dds::ebs2_na::stack<T>::less_op()
 					{
 						if (try_collision(q, him))
 						{
-							//tracing
+							// tracing
 							#ifdef	TRACING
 								++succ_ea;
 							#endif
@@ -501,7 +507,7 @@ void dds::ebs2_na::stack<T>::less_op()
 					{
 						finish_collision();
 
-						//tracing
+						// tracing
 						#ifdef	TRACING
 							++succ_ea;
 						#endif
@@ -520,7 +526,7 @@ void dds::ebs2_na::stack<T>::less_op()
 		{
 			finish_collision();
 
-			//tracing
+			// tracing
 			#ifdef	TRACING
 				++succ_ea;
 			#endif
@@ -529,7 +535,7 @@ void dds::ebs2_na::stack<T>::less_op()
 		}
 
 	label:
-		//tracing
+		// tracing
 		#ifdef	TRACING
 			fail_time += (MPI_Wtime() - start);
 			++fail_ea;
@@ -538,16 +544,16 @@ void dds::ebs2_na::stack<T>::less_op()
 
 		if (try_perform_stack_op())
 		{
-			//tracing
+			// tracing
 			#ifdef	TRACING
 				++succ_cs;
 			#endif
 
 			return;
 		}
-		else //if (!try_perform_stack_op())
+		else // if (!try_perform_stack_op())
 		{
-			//tracing
+			// tracing
 			#ifdef	TRACING
 				fail_time += (MPI_Wtime() - start);
 				++fail_cs;
