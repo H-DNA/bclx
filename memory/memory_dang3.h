@@ -53,9 +53,6 @@ private:
 template<typename T>
 dds::dang3::memory<T>::memory()
 {
-	// debugging
-	printf("[%lu]CP11\n", BCL::rank());
-
 	if (BCL::rank() == MASTER_UNIT)
 		mem_manager = "DANG3";
 
@@ -84,26 +81,17 @@ dds::dang3::memory<T>::memory()
 		if (i != BCL::rank())
 			buffers[i].reserve(HP_WINDOW);
 	}
-
-	// debugging
-	printf("[%lu]CP12\n", BCL::rank());
 }
 
 template<typename T>
 dds::dang3::memory<T>::~memory()
 {
-	// debugging
-	printf("[%lu]CP21\n", BCL::rank());
-
 	for (uint64_t i = 0; i < BCL::nprocs(); ++i)
 		for (uint64_t j = 0; j < BCL::nprocs(); ++j)
 			queues[i][j].clear();
 
         BCL::dealloc<T>(pool_rep);
 	BCL::dealloc<gptr<T>>(reservation);
-
-	// debugging
-	printf("[%lu]CP22\n", BCL::rank());
 }
 
 template<typename T>
