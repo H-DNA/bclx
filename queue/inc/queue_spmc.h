@@ -86,14 +86,14 @@ bool dds::queue_spmc<T>::dequeue(std::vector<T>& vals)
 	uint64_t size = tail_local - head_local;
 	if (size == 0)
 		return false;	// the queue is empty now
-
-	gptr<T> temp = items + head % capacity;
+	if (BCL::cas_sync(head, head_local, head_local + size) != head_local)	// local
+		return false;	// some other process already dequeued since I got head
+	gptr<T> temp = items + head_local % capacity;
 	T* array = new T[size];
 	BCL::load(temp, array, size);	// local
 	for (uint64_t i = 0; i < size; ++i)
 		vals.push_back(array[i]);
 	delete[] array;
-	head += vals.size();
 	return true;
 }
 
