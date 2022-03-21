@@ -73,7 +73,7 @@ dds::dang3::memory<T>::memory()
 	{
 		queues.push_back(std::vector<dds::queue_spsc<gptr<T>>>());
 		for (uint64_t j = 0; j < BCL::nprocs(); ++j)
-			queues[i].push_back(dds::queue_spsc<gptr<T>>(i, TOTAL_OPS));
+			queues[i].push_back(dds::queue_spsc<gptr<T>>(i, TOTAL_OPS / BCL::nprocs()));
 	}
 
 	counter = 0;
