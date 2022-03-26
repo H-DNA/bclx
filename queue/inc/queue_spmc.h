@@ -4,6 +4,7 @@
 #include <vector>	// std::vector...
 #include <cstdint>	// uint64_t...
 #include <utility>	// std::move...
+#include <algorith>	// std::min...
 
 namespace dds
 {
@@ -20,6 +21,8 @@ public:
 	bool dequeue(std::vector<T>& vals);
 
 private:
+	const uint64_t	BOUND_DEQUEUE	= 100;
+
 	uint64_t	host;
 	uint64_t	capacity;
 	uint64_t	tail_local;
@@ -82,13 +85,15 @@ template<typename T>
 bool dds::queue_spmc<T>::dequeue(std::vector<T>& vals)
 {
 	tail_local = BCL::aget_sync(tail);	// local
-	uint64_t head_local = BCL::aget_sync(head);	// local
+	uint64_t head_old = BCL::aget_sync(head);	// local
 	uint64_t size = tail_local - head_local;
 	if (size == 0)
 		return false;	// the queue is empty now
-	if (BCL::cas_sync(head, head_local, head_local + size) != head_local)	// local
+	uint64_t head_new = std::min(size, BOUND_DEQUEUE);
+	if (BCL::cas_sync(head, head_old, head_new) != head_old)	// local
 		return false;	// some other process already dequeued since I got head
-	gptr<T> temp = items + head_local % capacity;
+	gptr<T> temp = items + head_old % capacity;
+	size = head_new - head_old;
 	T* array = new T[size];
 	BCL::load(temp, array, size);	// local
 	for (uint64_t i = 0; i < size; ++i)
