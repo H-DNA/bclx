@@ -288,8 +288,8 @@ bool dds::ebs2_na::stack<T>::try_perform_stack_op()
 		gptr<elem<T>> oldTopAddr = BCL::aget_sync(top);
 
 		// try to reserve top
-		// if (!mem.try_reserve(oldTopAddr, top))
-		//	return false;
+		if (!mem.try_reserve(oldTopAddr, top))
+			return false;
 
 		// update new element (global memory)
         	gptr<gptr<elem<T>>> tempAddr = {pVal.itsElem.rank, pVal.itsElem.ptr};
@@ -303,14 +303,14 @@ bool dds::ebs2_na::stack<T>::try_perform_stack_op()
 		if (BCL::cas_sync(top, oldTopAddr, pVal.itsElem) == oldTopAddr)
 		{	
 			// unreserve top
-			// mem.unreserve(oldTopAddr);
+			mem.unreserve(oldTopAddr);
 
 			return true;
 		}
 		else // if (BCL::cas_sync(top, oldTopAddr, pVal.itsElem) != oldTopAddr)
 		{
 			// unreserve top
-			// mem.unreserve(oldTopAddr);
+			mem.unreserve(oldTopAddr);
 
 			return false;
 		}
