@@ -12,9 +12,9 @@ namespace ebs2_na
 {
 
 /* Macros */
-#ifdef	MEM_HP
+#ifdef		MEM_HP
 	using namespace hp;
-#elif	MEM_DANG3
+#elif defined	MEM_DANG3
 	using namespace dang3;
 #else	// No Memory Reclamation
 	using namespace nmr;
@@ -186,7 +186,7 @@ bool dds::ebs2_na::stack<T>::push(const T &value)
 	tempAddr = {temp.itsElem.rank, temp.itsElem.ptr + sizeof(gptr<elem<T>>)};
 	#ifdef	MEM_HP
 		BCL::rput_sync(value, tempAddr);
-	#else	// NMR, DANG3
+	#else	// MEM_NMR, MEM_DANG3
 		BCL::store(value, tempAddr);
 	#endif
 	BCL::store(temp, p);
@@ -297,7 +297,7 @@ bool dds::ebs2_na::stack<T>::try_perform_stack_op()
         	gptr<gptr<elem<T>>> tempAddr = {pVal.itsElem.rank, pVal.itsElem.ptr};
 		#ifdef	MEM_HP
 			BCL::rput_sync(oldTopAddr, tempAddr);
-		#else	// NMR, DANG3
+		#else	// MEM_NMR, MEM_DANG3
 			BCL::store(oldTopAddr, tempAddr);
 		#endif
 
