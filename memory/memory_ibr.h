@@ -42,8 +42,7 @@ public:
 	void free(const gptr<T>&);		// deallocate global memory
 	void op_begin();			// indicate the beginning of a concurrent operation
 	void op_end();				// indicate the end of a concurrent operation
-	bool try_reserve(gptr<T>&,		// try to protect a global pointer from reclamation
-			const gptr<gptr<T>>&);
+	gptr<T> reserve(const gptr<gptr<T>>&);	// try to protect a global pointer from reclamation
 	void unreserve(const gptr<T>&);		// stop protecting a global pointer
 
 private:
@@ -179,19 +178,25 @@ void dds::ibr::memory<T>::op_end()
 }
 
 template<typename T>
-bool dds::ibr::memory<T>::try_reserve(gptr<T>& ptr, const gptr<gptr<T>>& atom)
+dds::gptr<T> dds::ibr::memory<T>::reserve(const gptr<gptr<T>>& ptr)
 {
-	uint32_t 	timestamp, timestamp2;
+	gptr<T>		result;
+	uint32_t	timestamp;
 	gptr<uint32_t>	upper = {reservation.rank, reservation.ptr};
 	while (true)
 	{
-		timestamp = aget_sync(epoch);	// one RMA
-		if (aget_sync(upper) < timestamp)
-			aput_sync(timestamp, upper);
-		timestamp2 = aget_sync(epoch);   // one RMA
-		if (aget_sync(upper) == timestamp2)
-			return true;
-		ptr = aget_sync(atom);	// one RMA
+		result = aget_sync(ptr);	// one RMA
+		if (result == nullptr)
+			return nullptr;
+		else // if (result != nullptr)
+		{
+			timestamp = aget_sync(epoch);	// one RMA
+			if (aget_sync(upper) < timestamp)
+				aput_sync(timestamp, upper);
+			timestamp = aget_sync(epoch);	// one RMA
+			if (aget_sync(upper) == timestamp)
+				return result;
+		}
 	}
 }
 

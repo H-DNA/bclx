@@ -29,8 +29,7 @@ public:
 	void free(const gptr<T>&);		// deallocate global memory
 	void op_begin();			// indicate the beginning of a concurrent operation
 	void op_end();				// indicate the end of a concurrent operation
-	bool try_reserve(gptr<T>&,		// try to protect a global pointer from reclamation
-			const gptr<gptr<T>>&);
+	gptr<T> reserve(const gptr<gptr<T>>&);	// try to protect a global pointer from reclamation
 	void unreserve(const gptr<T>&);		// stop protecting a global pointer
 
 private:
@@ -150,9 +149,9 @@ void dds::ebr2::memory<T>::op_end()
 }
 
 template<typename T>
-bool dds::ebr2::memory<T>::try_reserve(gptr<T>& ptr, const gptr<gptr<T>>& atom)
+dds::gptr<T> dds::ebr2::memory<T>::reserve(const gptr<gptr<T>>& ptr)
 {
-	return true;
+	return aget_sync(ptr);	// one RMA
 }
 
 template<typename T>

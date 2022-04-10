@@ -286,12 +286,8 @@ bool dds::ebs2_na::stack<T>::try_perform_stack_op()
 	unit_info<T> pVal = BCL::load(p);
 	if (pVal.op == PUSH)
 	{
-		// get top (from global memory to local memory)
-		gptr<elem<T>> oldTopAddr = BCL::aget_sync(top);
-
-		// try to reserve top
-		if (!mem.try_reserve(oldTopAddr, top))
-			return false;
+		// reserve and get top
+		gptr<elem<T>> oldTopAddr = mem.reserve(top);
 
 		// update new element (global memory)
         	gptr<gptr<elem<T>>> tempAddr = {pVal.itsElem.rank, pVal.itsElem.ptr};
@@ -301,58 +297,49 @@ bool dds::ebs2_na::stack<T>::try_perform_stack_op()
 			BCL::store(oldTopAddr, tempAddr);
 		#endif
 
-		// update top (global memory)
-		if (BCL::cas_sync(top, oldTopAddr, pVal.itsElem) == oldTopAddr)
-		{	
-			// unreserve top
-			mem.unreserve(oldTopAddr);
+		// try to update top
+		gptr<elem<T>> result = BCL::cas_sync(top, oldTopAddr, pVal.itsElem);
 
+		// unreserve top
+		mem.unreserve(oldTopAddr);
+
+		// check if the update is successful
+		if (result == oldTopAddr)
 			return true;
-		}
-		else // if (BCL::cas_sync(top, oldTopAddr, pVal.itsElem) != oldTopAddr)
-		{
-			// unreserve top
-			mem.unreserve(oldTopAddr);
-
+		else // if (result != oldTopAddr)
 			return false;
-		}
 	}
 	else // if (pVal.op == POP)
 	{
                 gptr<gptr<elem<T>>> tempAddr = {p.rank, p.ptr};
 
-		// get top (from global memory to local memory)
-		gptr<elem<T>> oldTopAddr = BCL::aget_sync(top);
+		// reserve and get top
+		gptr<elem<T>> oldTopAddr = mem.reserve(top);
 
+		// check if the stack is empty
 		if (oldTopAddr == nullptr)
 		{
 			BCL::store(NULL_PTR_E, tempAddr);
 			return true;
 		}
 
-		// try to reserve top
-		if (!mem.try_reserve(oldTopAddr, top))
-			return false;
-
 		// get node (from global memory to local memory)
 		elem<T> newTopVal = BCL::rget_sync(oldTopAddr);
 
-		// update top
-		if (BCL::cas_sync(top, oldTopAddr, newTopVal.next) == oldTopAddr)
-		{
-			// unreserve top
-			mem.unreserve(oldTopAddr);
+		// try to update top
+		gptr<elem<T>> result = BCL::cas_sync(top, oldTopAddr, newTopVal.next);
 
+		// unreserve top
+		mem.unreserve(oldTopAddr);
+
+		// check if the update is successful
+		if (result == oldTopAddr)
+		{
 			BCL::store(oldTopAddr, tempAddr);
 			return true;
 		}
-		else // if (BCL::cas_sync(top, oldTopAddr, newTopVal.next) != oldTopAddr)
-		{
-			// unreserve top
-			mem.unreserve(oldTopAddr);
-
+		else // if (result != oldTopAddr)
 			return false;
-		}
 	}
 }
 

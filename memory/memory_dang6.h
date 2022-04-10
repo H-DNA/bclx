@@ -22,8 +22,7 @@ public:
 	void free(const gptr<T>&);		// deallocate global memory
 	void op_begin();			// indicate the beginning of a concurrent operation
 	void op_end();				// indicate the end of a concurrent operation
-	bool try_reserve(gptr<T>&,		// try to protect a global pointer from reclamation
-			const gptr<gptr<T>>&);
+	gptr<T> reserve(const gptr<gptr<T>>&);	// try to protect a global pointer from reclamation
 	void unreserve(const gptr<T>&);		// stop protecting a global pointer
 
 private:
@@ -108,45 +107,59 @@ void dds::dang6::memory<T>::op_end()
 }
 
 template<typename T>
-bool dds::dang6::memory<T>::try_reserve(gptr<T>& ptr, const gptr<gptr<T>>& atom)
+dds::gptr<T> dds::dang6::memory<T>::reserve(const gptr<gptr<T>>& ptr)
 {
-	gptr<gptr<T>> temp = reservation;
-        for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
-		if (BCL::aget_sync(temp) == NULL_PTR)
-		{
-			gptr<T> ptr_new;
-			while (true)
+	gptr<T> ptr_old = aget_sync(ptr);	// one RMA
+	if (ptr_old == nullptr)
+		return nullptr;
+	else // if (ptr_old != nullptr)
+	{
+		gptr<gptr<T>> temp = reservation;
+		for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
+			if (BCL::aget_sync(temp) == NULL_PTR)
 			{
-                		BCL::aput_sync(ptr, temp);
-				ptr_new = BCL::aget_sync(atom);
-				if (ptr_new == nullptr)
+				gptr<T> ptr_new;
+				while (true)
 				{
-					BCL::aput_sync(NULL_PTR, temp);
-					return false;
+					BCL::aput_sync(ptr_old, temp);
+					ptr_new = BCL::aget_sync(ptr);	// one RMA
+					if (ptr_new == nullptr)
+					{
+						BCL::aput_sync(NULL_PTR, temp);
+						return nullptr;
+					}
+					else if (ptr_new == ptr_old)
+						return ptr_old;
+					else // if(ptr_new != ptr_old)
+						ptr_old = ptr_new;
 				}
-				if (ptr_new == ptr)
-					return true;
-				ptr = ptr_new;
 			}
-		}
-		else // if (BCL::aget_sync(temp) != NULL_PTR)
-                	++temp;
-	printf("HP:Error\n");
-	return false;
+			else // if (BCL::aget_sync(temp) != NULL_PTR)
+				++temp;
+		printf("HP:Error\n");
+		return nullptr;
+	}
 }
 
 template<typename T>
 void dds::dang6::memory<T>::unreserve(const gptr<T>& ptr)
 {
-	gptr<gptr<T>> temp = reservation;
-	for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
-		if (BCL::aget_sync(temp) == ptr)
-		{
-			BCL::aput_sync(NULL_PTR, temp);
-			return;
-		}
-		else // if (BCL::aget_sync(temp) != ptr)
-			++temp;
+	if (ptr == nullptr)
+		return;
+	else // if (ptr != nullptr)
+	{
+		gptr<gptr<T>> temp = reservation;
+		for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
+			if (BCL::aget_sync(temp) == ptr)
+			{
+				BCL::aput_sync(NULL_PTR, temp);
+				return;
+			}
+			else // if (BCL::aget_sync(temp) != ptr)
+				++temp;
+		printf("HP:Error\n");
+		return;
+	}
 }
 
 #endif /* MEMORY_DANG6_H */

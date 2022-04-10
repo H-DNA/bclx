@@ -22,8 +22,7 @@ public:
 	void free(const gptr<T>&);		// deallocate global memory
 	void op_begin();			// indicate the beginning of a concurrent operation
 	void op_end();				// indicate the end of a concurrent operation
-	bool try_reserve(gptr<T>&,		// try to protect a global pointer from reclamation
-			const gptr<gptr<T>>&);
+	gptr<T> reserve(const gptr<gptr<T>>&);	// try to protect a global pointer from reclamation
 	void unreserve(const gptr<T>&);		// stop protecting a global pointer
 
 private:
@@ -132,50 +131,59 @@ void dds::hp::memory<T>::op_end()
 }
 
 template<typename T>
-bool dds::hp::memory<T>::try_reserve(gptr<T>& ptr, const gptr<gptr<T>>& atom)
+dds::gptr<T> dds::hp::memory<T>::reserve(const gptr<gptr<T>>& ptr)
 {
-	if (ptr == nullptr)
-		return true;
-	else // if (ptr != nullptr)
+	gptr<T> ptr_old = aget_sync(ptr);	// one RMA
+	if (ptr_old == nullptr)
+		return nullptr;
+	else // if (ptr_old != nullptr)
 	{
 		gptr<gptr<T>> temp = reservation;
-        	for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
+		for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
 			if (BCL::aget_sync(temp) == NULL_PTR)
 			{
 				gptr<T> ptr_new;
 				while (true)
 				{
-                			BCL::aput_sync(ptr, temp);
-					ptr_new = BCL::aget_sync(atom);
+					BCL::aput_sync(ptr_old, temp);
+					ptr_new = BCL::aget_sync(ptr);	// one RMA
 					if (ptr_new == nullptr)
 					{
 						BCL::aput_sync(NULL_PTR, temp);
-						return false;
+						return nullptr;
 					}
-					if (ptr_new == ptr)
-						return true;
-					ptr = ptr_new;
+					else if (ptr_new == ptr_old)
+						return ptr_old;
+					else // if(ptr_new != ptr_old)
+						ptr_old = ptr_new;
 				}
 			}
 			else // if (BCL::aget_sync(temp) != NULL_PTR)
-                		++temp;
+				++temp;
 		printf("HP:Error\n");
-		return false;
+		return nullptr;
 	}
 }
 
 template<typename T>
 void dds::hp::memory<T>::unreserve(const gptr<T>& ptr)
 {
-	gptr<gptr<T>> temp = reservation;
-	for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
-		if (BCL::aget_sync(temp) == ptr)
-		{
-			BCL::aput_sync(NULL_PTR, temp);
-			return;
-		}
-		else // if (BCL::aget_sync(temp) != ptr)
-			++temp;
+	if (ptr == nullptr)
+		return;
+	else // if (ptr != nullptr)
+	{
+		gptr<gptr<T>> temp = reservation;
+		for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
+			if (BCL::aget_sync(temp) == ptr)
+			{
+				BCL::aput_sync(NULL_PTR, temp);
+				return;
+			}
+			else // if (BCL::aget_sync(temp) != ptr)
+				++temp;
+		printf("HP:Error\n");
+		return;
+	}
 }
 
 template<typename T>

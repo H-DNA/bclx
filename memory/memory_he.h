@@ -37,8 +37,7 @@ public:
 	void free(const gptr<T>&);		// deallocate global memory
 	void op_begin();			// indicate the beginning of a concurrent operation
 	void op_end();				// indicate the end of a concurrent operation
-	bool try_reserve(gptr<T>&,		// try to protect a global pointer from reclamation
-			const gptr<gptr<T>>&);
+	gptr<T> reserve(const gptr<gptr<T>>&);	// try to protect a global pointer from reclamation
 	void unreserve(const gptr<T>&);		// stop protecting a global pointer
 
 private:
@@ -177,50 +176,65 @@ void dds::he::memory<T>::op_begin()
 template<typename T>
 void dds::he::memory<T>::op_end()
 {
-	
+	/* No-op */	
 }
 
 template<typename T>
-bool dds::he::memory<T>::try_reserve(gptr<T>& ptr, const gptr<gptr<T>>& atom)
+dds::gptr<T> dds::he::memory<T>::reserve(const gptr<gptr<T>>& ptr)
 {
-	uint64_t era_prev, era_curr;
 	gptr<uint64_t> temp = reservation;
 	for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
-	{
 		if (BCL::aget_sync(temp) == MIN)
 		{
-			era_prev = BCL::aget_sync(epoch);	// one RMA
-			BCL::aput_sync(era_prev, temp);
+			uint64_t	era_old,
+					era_new;
+			gptr<T>		result;
+			era_old = BCL::aget_sync(epoch);	// one RMA
+			BCL::aput_sync(era_old, temp);
 			while (true)
 			{
-				ptr = BCL::aget_sync(atom);	// one RMA
-				era_curr = BCL::aget_sync(epoch);	// one RMA
-				if (era_curr == era_prev)
+				result = BCL::aget_sync(ptr);	// one RMA
+				if (result == nullptr)
+					return nullptr;
+				else // if (result != nullptr)
 				{
-					dictionary.push_back(std::make_pair(ptr, i));
-					return true;
+					era_new = BCL::aget_sync(epoch);	// one RMA
+					if (era_new == era_old)
+					{
+						dictionary.push_back(std::make_pair(result, i));
+						return result;
+					}
+					else // if (era_new != era_old)
+					{
+						BCL::aput_sync(era_new, temp);
+						era_old = era_new;
+					}
 				}
-				BCL::aput_sync(era_curr, temp);
-				era_prev = era_curr;
 			}
 		}
-		else // if (era_prev != MIN)
+		else // if (era_old != MIN)
 			++temp;
-	}
 	printf("HE:Error\n");
-	return false;
+	return nullptr;
 }
 
 template<typename T>
 void dds::he::memory<T>::unreserve(const gptr<T>& ptr)
 {
-	for (uint32_t i = 0; i < dictionary.size(); ++i)
-		if (dictionary[i].first == ptr)
-		{
-			gptr<uint64_t> temp = reservation + dictionary[i].second;
-			BCL::aput_sync(MIN, temp);
-			return;
-		}
+	if (ptr == nullptr)
+		return;
+	else // if (ptr != nullptr)
+	{
+		for (uint32_t i = 0; i < dictionary.size(); ++i)
+			if (dictionary[i].first == ptr)
+			{
+				gptr<uint64_t> temp = reservation + dictionary[i].second;
+				BCL::aput_sync(MIN, temp);
+				return;
+			}
+		printf("HE:Error\n");
+		return;
+	}
 }
 
 template<typename T>

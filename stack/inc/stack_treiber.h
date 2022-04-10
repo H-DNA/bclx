@@ -192,7 +192,8 @@ bool dds::ts::stack<T>::pop(T &value)
 	mem.op_begin();
 
 	elem<T> 		oldTopVal;
-	gptr<elem<T>> 		oldTopAddr;
+	gptr<elem<T>> 		oldTopAddr,
+				result;
 	backoff::backoff        bk(bk_init, bk_max);
 
 	// tracing
@@ -207,9 +208,10 @@ bool dds::ts::stack<T>::pop(T &value)
 			start = MPI_Wtime();
 		#endif
 
-		// get top (from global memory to local memory)
-		oldTopAddr = BCL::aget_sync(top);
+		// reserve and get top
+		oldTopAddr = mem.reserve(top);
 
+		// check if the stack is empty
 		if (oldTopAddr == nullptr)
 		{
 			// tracing
@@ -224,19 +226,18 @@ bool dds::ts::stack<T>::pop(T &value)
 			return false;
 		}
 
-		// try to reserve top
-		if (!mem.try_reserve(oldTopAddr, top))
-			continue;
-
 		// get node (from global memory to local memory)
 		oldTopVal = BCL::rget_sync(oldTopAddr);
 
-		// update top
-		if (BCL::cas_sync(top, oldTopAddr, oldTopVal.next) == oldTopAddr)
-		{
-			// unreserve top
-			mem.unreserve(oldTopAddr);
+		// try to update top
+		result = BCL::cas_sync(top, oldTopAddr, oldTopVal.next);
+		
+		// unreserve top
+		mem.unreserve(oldTopAddr);
 
+		// check if the update is successful
+		if (result == oldTopAddr)
+		{
 			// tracing
 			#ifdef	TRACING
 				++succ_cs;
@@ -244,11 +245,8 @@ bool dds::ts::stack<T>::pop(T &value)
 
 			break;
 		}
-		else // if (BCL::cas_sync(top, oldTopAddr, oldTopVal.next) != oldTopAddr)
+		else // if (result != oldTopAddr)
 		{
-			// unreserve top
-			mem.unreserve(oldTopAddr);
-
 			bk.delay_dbl();
 
 			// tracing
