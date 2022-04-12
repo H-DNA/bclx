@@ -84,19 +84,30 @@ void dds::queue_spmc<T>::enqueue(const std::vector<T>& vals)
 template<typename T>
 bool dds::queue_spmc<T>::dequeue(std::vector<T>& vals)
 {
+	uint64_t	size,
+			head_old,
+			head_new,
+			result;
+
 	tail_local = BCL::aget_sync(tail);	// local
-	uint64_t head_old = BCL::aget_sync(head);	// local
-	uint64_t size = tail_local - head_local;
-	if (size == 0)
-		return false;	// the queue is empty now
-	uint64_t head_new = std::min(size, BOUND_DEQUEUE);
-	if (BCL::cas_sync(head, head_old, head_new) != head_old)	// local
-		return false;	// some other process already dequeued since I got head
+	head_old = BCL::aget_sync(head);	// local
+	while (true)	// lock-free loop
+	{
+		size = tail_local - head_old;
+		if (size == 0)
+			return false;	// the queue is empty now
+		size_bound = std::min(size, BOUND_DEQUEUE);
+		head_new += size_bound;
+		result = BCL::cas_sync(head, head_old, head_new);	// local
+		if (result == head_old)
+			break;
+		else // if (result != head_old)
+			head_old = result;
+	}
 	gptr<T> temp = items + head_old % capacity;
-	size = head_new - head_old;
-	T* array = new T[size];
-	BCL::load(temp, array, size);	// local
-	for (uint64_t i = 0; i < size; ++i)
+	T* array = new T[size_bound];
+	BCL::load(temp, array, size_bound);	// local
+	for (uint64_t i = 0; i < size_bound; ++i)
 		vals.push_back(array[i]);
 	delete[] array;
 	return true;

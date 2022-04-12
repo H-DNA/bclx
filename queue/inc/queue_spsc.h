@@ -20,8 +20,8 @@ public:
 	bool dequeue(std::vector<T>& vals);
 
 private:
-	uint64_t	host;
-	uint64_t	capacity;
+	const uint64_t	HOST;
+	const uint64_t	CAPACITY;
 	uint64_t	head;
 	uint64_t	tail_local;
 	gptr<uint64_t>	tail;
@@ -33,19 +33,19 @@ private:
 template<typename T>
 dds::queue_spsc<T>::queue_spsc(const uint64_t&	host,
 				const uint64_t& cap)
-	: host{host}, capacity{cap}, head{0}, tail_local{0}
+	: HOST{host}, CAPACITY{cap}, head{0}, tail_local{0}
 {
-	if (BCL::rank() == host)
+	if (BCL::rank() == HOST)
 	{
 		tail = BCL::alloc<uint64_t>(1);
 		BCL::store(uint64_t(0), tail);
 
-		items = BCL::alloc<T>(cap);
+		items = BCL::alloc<T>(CAPACITY);
 	}
 
 	// synchronize	
-	tail = BCL::broadcast(tail, host);
-	items = BCL::broadcast(items, host);
+	tail = BCL::broadcast(tail, HOST);
+	items = BCL::broadcast(items, HOST);
 }
 
 template<typename T>
@@ -57,7 +57,7 @@ dds::queue_spsc<T>::~queue_spsc()
 template<typename T>
 void dds::queue_spsc<T>::clear()
 {
-	if (BCL::rank() == host)
+	if (BCL::rank() == HOST)
 	{
 		BCL::dealloc<uint64_t>(tail);
 		BCL::dealloc<T>(items);
@@ -67,9 +67,18 @@ void dds::queue_spsc<T>::clear()
 template<typename T>
 void dds::queue_spsc<T>::enqueue(const std::vector<T>& vals)
 {
-	gptr<T> temp = items + tail_local % capacity;
+	uint64_t offset = tail_local % CAPACITY;
+	gptr<T> location = items + offset;
 	const T* array = &vals[0];
-	BCL::rput_sync(array, temp, vals.size());	// remote
+	if (offset + vals.size() <= CAPACITY)
+		BCL::rput_sync(array, location, vals.size());	// remote
+	else // if (offset + vals.size() > CAPACITY)
+	{
+		uint64_t size = CAPACITY - offset;
+		BCL::rput_sync(array, location, size);	// remote;
+		uint64_t size2 = vals.size() - size;
+		BCL::rput_sync(array + size, items, size2);	// remote
+	}
 	tail_local += vals.size();
 	BCL::aput_sync(tail_local, tail);	// remote
 }
@@ -78,13 +87,22 @@ template<typename T>
 bool dds::queue_spsc<T>::dequeue(std::vector<T>& vals)
 {
 	tail_local = BCL::aget_sync(tail);	// local
-	uint64_t size = tail_local - head;
-	if (size == 0)
+	uint64_t length = tail_local - head;
+	if (length == 0)
 		return false;	// the queue is empty now
-	gptr<T> temp = items + head % capacity;
-	T* array = new T[size];
-	BCL::load(temp, array, size);	// local
-	for (uint64_t i = 0; i < size; ++i)
+	uint64_t offset = head % CAPACITY;
+	gptr<T> location = items + offset;
+	T* array = new T[length];
+	if (offset + length <= CAPACITY)
+		BCL::load(location, array, length);	// local
+	else // if (offset + length > CAPACITY)
+	{
+		uint64_t size = CAPACITY - offset;	// local
+		BCL::load(location, array, size);
+		uint64_t size2 = length - size;
+		BCL::load(location, array + size, size2);	// local
+	}
+	for (uint64_t i = 0; i < length; ++i)
 		vals.push_back(array[i]);
 	delete[] array;
 	head += vals.size();
