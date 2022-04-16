@@ -60,8 +60,6 @@ dds::dang5::memory<T>::memory()
 
 	pool = pool_rep = BCL::alloc<T>(TOTAL_OPS);
         capacity = pool.ptr + TOTAL_OPS * sizeof(T);
-
-	list_ret.reserve(HP_WINDOW);
 }
 
 template<typename T>
@@ -84,7 +82,7 @@ template<typename T>
 void dds::dang5::memory<T>::free(const gptr<T>& addr)
 {
 	list_ret.push_back(addr);
-	if (list_ret.size() >= HP_WINDOW)
+	if (list_ret.size() % HP_WINDOW == 0)
 		empty();
 }
 
