@@ -78,15 +78,30 @@ dds::gptr<T> dds::dang4::memory<T>::malloc()
 {
 	// determine the global address of the new element
 	if (na.node_num == 1)
+	{
 		if (pool.ptr < capacity)
 			return pool++;
+	}
 	else // if (na.node_num > 1)
 	{
-		gptr<T> ptr = pool++;
-		if (na.node_id % 2 == 0)
-			return {ptr.rank + na.size, ptr.ptr};
-		else // if (na.node_id % 2 != 0)
-			return {ptr.rank - na.size, ptr.ptr};
+		if (pool.ptr < capacity)
+		{
+			gptr<T> ptr = pool++;
+			if (na.node_id % 2 == 0)
+			{
+				// debugging
+				printf("[%lu]CP1: <%u, %u>\n", BCL::rank(), ptr.rank + na.size, ptr.ptr);
+
+				return {ptr.rank + na.size, ptr.ptr};
+			}
+			else // if (na.node_id % 2 != 0)
+			{
+				// debugging
+				printf("[%lu]CP2: <%u, %u>\n", BCL::rank(), ptr.rank - na.size, ptr.ptr);
+
+				return {ptr.rank - na.size, ptr.ptr};
+			}
+		}
 	}
 	return nullptr;
 }
@@ -135,7 +150,7 @@ dds::gptr<T> dds::dang4::memory<T>::reserve(const gptr<gptr<T>>& ptr)
 					}
 					else if (ptr_new == ptr_old)
 						return ptr_old;
-					else // if(ptr_new != ptr_old)
+					else // if (ptr_new != ptr_old)
 						ptr_old = ptr_new;
 				}
 			}

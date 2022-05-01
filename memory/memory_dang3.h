@@ -191,7 +191,7 @@ dds::gptr<T> dds::dang3::memory<T>::reserve(const gptr<gptr<T>>& ptr)
 					}
 					else if (ptr_new == ptr_old)
 						return ptr_old;
-					else // if(ptr_new != ptr_old)
+					else // if (ptr_new != ptr_old)
 						ptr_old = ptr_new;
 				}
 			}
