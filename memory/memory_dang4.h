@@ -88,19 +88,9 @@ dds::gptr<T> dds::dang4::memory<T>::malloc()
 		{
 			gptr<T> ptr = pool++;
 			if (na.node_id % 2 == 0)
-			{
-				// debugging
-				printf("[%lu]CP1: <%u, %u>\n", BCL::rank(), ptr.rank + na.size, ptr.ptr);
-
 				return {ptr.rank + na.size, ptr.ptr};
-			}
 			else // if (na.node_id % 2 != 0)
-			{
-				// debugging
-				printf("[%lu]CP2: <%u, %u>\n", BCL::rank(), ptr.rank - na.size, ptr.ptr);
-
 				return {ptr.rank - na.size, ptr.ptr};
-			}
 		}
 	}
 	return nullptr;
