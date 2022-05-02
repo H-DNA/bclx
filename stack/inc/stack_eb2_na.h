@@ -14,8 +14,28 @@ namespace ebs2_na
 /* Macros */
 #ifdef		MEM_HP
 	using namespace hp;
+#elif defined	MEM_EBR
+	using namespace ebr;
+#elif defined	MEM_EBR2
+	using namespace ebr2;
+#elif defined 	MEM_EBR3
+	using namespace ebr3;
+#elif defined 	MEM_HE
+	using namespace he;
+#elif defined	MEM_IBR
+	using namespace ibr;
+#elif defined	MEM_DANG
+	using namespace dang;
+#elif defined 	MEM_DANG2
+	using namespace dang2;
 #elif defined	MEM_DANG3
 	using namespace dang3;
+#elif defined	MEM_DANG4
+	using namespace dang4;
+#elif defined	MEM_DANG5
+	using namespace dang5;
+#elif defined	MEM_DANG6
+	using namespace dang6;
 #else	// No Memory Reclamation
 	using namespace nmr;
 #endif
@@ -286,8 +306,8 @@ bool dds::ebs2_na::stack<T>::try_perform_stack_op()
 	unit_info<T> pVal = BCL::load(p);
 	if (pVal.op == PUSH)
 	{
-		// reserve and get top
-		gptr<elem<T>> oldTopAddr = mem.reserve(top);
+		// get top
+		gptr<elem<T>> oldTopAddr = BCL::aget_sync(top);
 
 		// update new element (global memory)
         	gptr<gptr<elem<T>>> tempAddr = {pVal.itsElem.rank, pVal.itsElem.ptr};
@@ -298,23 +318,17 @@ bool dds::ebs2_na::stack<T>::try_perform_stack_op()
 		#endif
 
 		// try to update top
-		gptr<elem<T>> result = BCL::cas_sync(top, oldTopAddr, pVal.itsElem);
-
-		// unreserve top
-		mem.unreserve(oldTopAddr);
-
-		// check if the update is successful
-		if (result == oldTopAddr)
+		if (BCL::cas_sync(top, oldTopAddr, pVal.itsElem) == oldTopAddr)
 			return true;
-		else // if (result != oldTopAddr)
+		else // if (BCL::cas_sync(top, oldTopAddr, pVal.itsElem) != oldTopAddr)
 			return false;
 	}
 	else // if (pVal.op == POP)
 	{
                 gptr<gptr<elem<T>>> tempAddr = {p.rank, p.ptr};
 
-		// reserve and get top
-		gptr<elem<T>> oldTopAddr = mem.reserve(top);
+		// get top
+		gptr<elem<T>> oldTopAddr = BCL::aget_sync(top);
 
 		// check if the stack is empty
 		if (oldTopAddr == nullptr)
@@ -323,11 +337,16 @@ bool dds::ebs2_na::stack<T>::try_perform_stack_op()
 			return true;
 		}
 
+		// try to reserve top
+		gptr<elem<T>> result = mem.try_reserve(top, oldTopAddr);
+		if (result == nullptr || result != oldTopAddr)
+			return false;
+
 		// get node (from global memory to local memory)
 		elem<T> newTopVal = BCL::rget_sync(oldTopAddr);
 
 		// try to update top
-		gptr<elem<T>> result = BCL::cas_sync(top, oldTopAddr, newTopVal.next);
+		result = BCL::cas_sync(top, oldTopAddr, newTopVal.next);
 
 		// unreserve top
 		mem.unreserve(oldTopAddr);

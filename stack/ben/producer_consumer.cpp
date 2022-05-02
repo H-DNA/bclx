@@ -6,7 +6,7 @@
 #include "../../lib/ta.h"	// ta::na...
 
 using namespace dds;
-using namespace dds::ts;
+using namespace dds::ebs2_na;
 
 int main()
 {

@@ -9,63 +9,63 @@ namespace dds
 namespace ts
 {
 
-	/* Macros */
-	#ifdef		MEM_HP
-		using namespace hp;
-	#elif defined	MEM_EBR
-		using namespace ebr;
-	#elif defined	MEM_EBR2
-		using namespace ebr2;
-	#elif defined 	MEM_EBR3
-		using namespace ebr3;
-	#elif defined 	MEM_HE
-		using namespace he;
-	#elif defined	MEM_IBR
-		using namespace ibr;
-	#elif defined	MEM_DANG
-		using namespace dang;
-	#elif defined 	MEM_DANG2
-		using namespace dang2;
-	#elif defined	MEM_DANG3
-		using namespace dang3;
-	#elif defined	MEM_DANG4
-		using namespace dang4;
-	#elif defined	MEM_DANG5
-		using namespace dang5;
-	#elif defined	MEM_DANG6
-		using namespace dang6;
-	#else	// No Memory Reclamation
-		using namespace nmr;
-	#endif
+/* Macros */
+#ifdef		MEM_HP
+	using namespace hp;
+#elif defined	MEM_EBR
+	using namespace ebr;
+#elif defined	MEM_EBR2
+	using namespace ebr2;
+#elif defined 	MEM_EBR3
+	using namespace ebr3;
+#elif defined 	MEM_HE
+	using namespace he;
+#elif defined	MEM_IBR
+	using namespace ibr;
+#elif defined	MEM_DANG
+	using namespace dang;
+#elif defined 	MEM_DANG2
+	using namespace dang2;
+#elif defined	MEM_DANG3
+	using namespace dang3;
+#elif defined	MEM_DANG4
+	using namespace dang4;
+#elif defined	MEM_DANG5
+	using namespace dang5;
+#elif defined	MEM_DANG6
+	using namespace dang6;
+#else	// No Memory Reclamation
+	using namespace nmr;
+#endif
 
-	/* Data types */
-        template<typename T>
-        struct elem
-        {
-                gptr<elem<T>>   next;
-                T               value;
-        };
+/* Data types */
+template<typename T>
+struct elem
+{
+        gptr<elem<T>>   next;
+        T               value;
+};
 
-	template<typename T>
-	class stack
-	{
-	public:
-		memory<elem<T>>		mem;	// manage global memory
+template<typename T>
+class stack
+{
+public:
+	memory<elem<T>>		mem;	// manage global memory
 
-		stack();			// collective
-		stack(const uint64_t &num);	// collective
-		~stack();			// collective
-		bool push(const T &value);	// non-collective
-		bool pop(T &value);		// non-collective
-		void print();			// collective
+	stack();			// collective
+	stack(const uint64_t &num);	// collective
+	~stack();			// collective
+	bool push(const T &value);	// non-collective
+	bool pop(T &value);		// non-collective
+	void print();			// collective
 
-	private:
-        	const gptr<elem<T>> 	NULL_PTR = nullptr; 	// be a null constant
+private:
+	const gptr<elem<T>> 	NULL_PTR = nullptr; 	// be a null constant
 
-                gptr<gptr<elem<T>>>	top;	// point to global address of the top
+        gptr<gptr<elem<T>>>	top;	// point to global address of the top
 
-		bool push_fill(const T &value);
-	};
+	bool push_fill(const T &value);
+};
 
 } /* namespace ts */
 
