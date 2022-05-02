@@ -23,6 +23,8 @@ public:
 	void free(const gptr<T>&);		// deallocate global memory
 	void op_begin();			// indicate the beginning of a concurrent operation
 	void op_end();				// indicate the end of a concurrent operation
+	gptr<T> try_reserve(const gptr<gptr<T>>&,	// try to to protect a global pointer from reclamation
+				const gptr<T>&);
 	gptr<T> reserve(const gptr<gptr<T>>&);	// try to protect a global pointer from reclamation
 	void unreserve(const gptr<T>&);		// stop protecting a global pointer
 
@@ -168,31 +170,55 @@ void dds::dang3::memory<T>::op_end()
 }
 
 template<typename T>
-dds::gptr<T> dds::dang3::memory<T>::reserve(const gptr<gptr<T>>& ptr)
+dds::gptr<T> dds::dang3::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, const gptr<T>& val_old)
 {
-	gptr<T> ptr_old = aget_sync(ptr);	// one RMA
-	if (ptr_old == nullptr)
+	if (val_old == nullptr)
 		return nullptr;
-	else // if (ptr_old != nullptr)
+	else // if (val_old != nullptr)
 	{
 		gptr<gptr<T>> temp = reservation;
 		for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
 			if (BCL::aget_sync(temp) == NULL_PTR)
 			{
-				gptr<T> ptr_new;
+				BCL::aput_sync(val_old, temp);
+				gptr<T> val_new = BCL::aget_sync(ptr);	// one RMA
+				if (val_new == nullptr || val_new != val_old)
+					BCL::aput_sync(NULL_PTR, temp);
+				return val_new;
+			}
+			else // if (BCL::aget_sync(temp) != NULL_PTR)
+				++temp;
+		printf("HP:Error\n");
+		return nullptr;
+	}
+}
+
+template<typename T>
+dds::gptr<T> dds::dang3::memory<T>::reserve(const gptr<gptr<T>>& ptr)
+{
+	gptr<T> val_old = BCL::aget_sync(ptr);	// one RMA
+	if (val_old == nullptr)
+		return nullptr;
+	else // if (val_old != nullptr)
+	{
+		gptr<gptr<T>> temp = reservation;
+		for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
+			if (BCL::aget_sync(temp) == NULL_PTR)
+			{
+				gptr<T> val_new;
 				while (true)
 				{
-					BCL::aput_sync(ptr_old, temp);
-					ptr_new = BCL::aget_sync(ptr);	// one RMA
-					if (ptr_new == nullptr)
+					BCL::aput_sync(val_old, temp);
+					val_new = BCL::aget_sync(ptr);	// one RMA
+					if (val_new == nullptr)
 					{
 						BCL::aput_sync(NULL_PTR, temp);
 						return nullptr;
 					}
-					else if (ptr_new == ptr_old)
-						return ptr_old;
-					else // if (ptr_new != ptr_old)
-						ptr_old = ptr_new;
+					else if (val_new == val_old)
+						return val_old;
+					else // if (val_new != val_old)
+						val_old = val_new;
 				}
 			}
 			else // if (BCL::aget_sync(temp) != NULL_PTR)
