@@ -1,15 +1,16 @@
-#ifndef MEMORY_DANG6_H
-#define MEMORY_DANG6_H
+#ifndef MEMORY_DANG4_H
+#define MEMORY_DANG4_H
 
 #include <cstdint>	// uint64_t...
 #include <vector>	// std::vector...
 #include <algorithm>	// std::sort...
 #include <utility>	// std::move...
+#include "../lib/ta.h"	// ta::na...
 
 namespace dds
 {
 
-namespace dang6
+namespace dang4
 {
 
 template<typename T>
@@ -18,14 +19,14 @@ class memory
 public:
 	memory();
 	~memory();
-	gptr<T> malloc();			// allocate global memory
-	void free(const gptr<T>&);		// deallocate global memory
-	void op_begin();			// indicate the beginning of a concurrent operation
-	void op_end();				// indicate the end of a concurrent operation
+	gptr<T> malloc();				// allocate global memory
+	void free(const gptr<T>&);			// deallocate global memory
+	void op_begin();				// indicate the beginning of a concurrent operation
+	void op_end();					// indicate the end of a concurrent operation
 	gptr<T> try_reserve(const gptr<gptr<T>>&,	// try to to protect a global pointer from reclamation
 				const gptr<T>&);
-	gptr<T> reserve(const gptr<gptr<T>>&);	// try to protect a global pointer from reclamation
-	void unreserve(const gptr<T>&);		// stop protecting a global pointer
+	gptr<T> reserve(const gptr<gptr<T>>&);		// try to protect a global pointer from reclamation
+	void unreserve(const gptr<T>&);			// stop protecting a global pointer
 
 private:
 	const gptr<T>		NULL_PTR 	= nullptr;
@@ -39,17 +40,20 @@ private:
 	gptr<gptr<T>>		reservation;	// be an array of hazard pointers of the calling unit
 	std::vector<gptr<T>>	list_ret;	// contain retired elems
 	std::vector<gptr<T>>	list_rec;	// contain reclaimed elems
+	ta::na			na;		// contain node information
+
+	void empty();
 };
 
-} /* namespace dang6 */
+} /* namespace dang4 */
 
 } /* namespace dds */
 
 template<typename T>
-dds::dang6::memory<T>::memory()
+dds::dang4::memory<T>::memory()
 {
 	if (BCL::rank() == MASTER_UNIT)
-		mem_manager = "DANG6";
+		mem_manager = "DANG4";
 
         gptr<gptr<T>> temp = reservation = BCL::alloc<gptr<T>>(HPS_PER_UNIT);
 	for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
@@ -60,56 +64,62 @@ dds::dang6::memory<T>::memory()
 
 	pool = pool_rep = BCL::alloc<T>(TOTAL_OPS);
         capacity = pool.ptr + TOTAL_OPS * sizeof(T);
+
+	list_ret.reserve(HP_WINDOW);
 }
 
 template<typename T>
-dds::dang6::memory<T>::~memory()
+dds::dang4::memory<T>::~memory()
 {
         BCL::dealloc<T>(pool_rep);
 	BCL::dealloc<gptr<T>>(reservation);
 }
 
 template<typename T>
-dds::gptr<T> dds::dang6::memory<T>::malloc()
+dds::gptr<T> dds::dang4::memory<T>::malloc()
 {
-        // determine the global address of the new element
-        if (!list_rec.empty())
+	// determine the global address of the new element
+	if (na.node_num == 1)
 	{
-		// tracing
-		#ifdef	TRACING
-			++elem_ru;
-		#endif
-
-		gptr<T> addr = list_rec.back();
-		list_rec.pop_back();
-                return addr;
+		if (pool.ptr < capacity)
+			return pool++;
 	}
-        else if (pool.ptr < capacity)	// the list of reclaimed global memory is empty
-		return pool++;
-	else
-		return nullptr;
+	else // if (na.node_num > 1)
+	{
+		if (pool.ptr < capacity)
+		{
+			gptr<T> ptr = pool++;
+			if (na.node_id % 2 == 0)
+				return {ptr.rank + na.size, ptr.ptr};
+			else // if (na.node_id % 2 != 0)
+				return {ptr.rank - na.size, ptr.ptr};
+		}
+	}
+	return nullptr;
 }
 
 template<typename T>
-void dds::dang6::memory<T>::free(const gptr<T>& addr)
+void dds::dang4::memory<T>::free(const gptr<T>& addr)
 {
 	list_ret.push_back(addr);
+	if (list_ret.size() >= HP_WINDOW)
+		empty();
 }
 
 template<typename T>
-void dds::dang6::memory<T>::op_begin()
+void dds::dang4::memory<T>::op_begin()
 {
 	/* No-op */
 }
 
 template<typename T>
-void dds::dang6::memory<T>::op_end()
+void dds::dang4::memory<T>::op_end()
 {
 	/* No-op */
 }
 
 template<typename T>
-dds::gptr<T> dds::dang6::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, const gptr<T>& val_old)
+dds::gptr<T> dds::dang4::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, const gptr<T>& val_old)
 {
 	if (val_old == nullptr)
 		return nullptr;
@@ -133,7 +143,7 @@ dds::gptr<T> dds::dang6::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, const 
 }
 
 template<typename T>
-dds::gptr<T> dds::dang6::memory<T>::reserve(const gptr<gptr<T>>& ptr)
+dds::gptr<T> dds::dang4::memory<T>::reserve(const gptr<gptr<T>>& ptr)
 {
 	gptr<T> val_old = BCL::aget_sync(ptr);	// one RMA
 	if (val_old == nullptr)
@@ -168,7 +178,7 @@ dds::gptr<T> dds::dang6::memory<T>::reserve(const gptr<gptr<T>>& ptr)
 }
 
 template<typename T>
-void dds::dang6::memory<T>::unreserve(const gptr<T>& ptr)
+void dds::dang4::memory<T>::unreserve(const gptr<T>& ptr)
 {
 	if (ptr == nullptr)
 		return;
@@ -188,4 +198,55 @@ void dds::dang6::memory<T>::unreserve(const gptr<T>& ptr)
 	}
 }
 
-#endif /* MEMORY_DANG6_H */
+template<typename T>
+void dds::dang4::memory<T>::empty()
+{	
+	std::vector<gptr<T>>	plist;		// contain non-null hazard pointers
+	std::vector<gptr<T>>	new_dlist;	// be dlist after finishing the Scan function
+	gptr<gptr<T>> 		hp_temp;	// a temporary variable
+	gptr<T>			addr;		// a temporary variable
+
+	plist.reserve(HP_TOTAL);
+	new_dlist.reserve(HP_TOTAL);
+
+	// Stage 1
+	hp_temp.ptr = reservation.ptr;
+	for (uint64_t i = 0; i < BCL::nprocs(); ++i)
+	{
+		hp_temp.rank = i;
+		for (uint32_t j = 0; j < HPS_PER_UNIT; ++j)
+		{
+			addr = BCL::aget_sync(hp_temp);
+			if (addr != NULL_PTR)
+				plist.push_back(addr);
+			++hp_temp;
+		}
+	}
+	
+	// Stage 2
+	std::sort(plist.begin(), plist.end());
+	plist.resize(std::unique(plist.begin(), plist.end()) - plist.begin());
+
+	// Stage 3
+        while (!list_ret.empty())
+	{
+		addr = list_ret.back();
+		list_ret.pop_back();
+		if (std::binary_search(plist.begin(), plist.end(), addr))
+			new_dlist.push_back(addr);
+		else
+		{
+			// tracing
+			#ifdef	TRACING
+				++elem_rc;
+			#endif
+
+			list_rec.push_back(addr);
+		}
+	}
+
+	// Stage 4
+	list_ret = std::move(new_dlist);
+}
+
+#endif /* MEMORY_DANG4_H */

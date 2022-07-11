@@ -19,14 +19,14 @@ class memory
 public:
 	memory();
 	~memory();
-	gptr<T> malloc();			// allocate global memory
-	void free(const gptr<T>&);		// deallocate global memory
-	void op_begin();			// indicate the beginning of a concurrent operation
-	void op_end();				// indicate the end of a concurrent operation
+	gptr<T> malloc();				// allocate global memory
+	void free(const gptr<T>&);			// deallocate global memory
+	void op_begin();				// indicate the beginning of a concurrent operation
+	void op_end();					// indicate the end of a concurrent operation
 	gptr<T> try_reserve(const gptr<gptr<T>>&,	// try to to protect a global pointer from reclamation
 			const gptr<T>&);
-	gptr<T> reserve(const gptr<gptr<T>>&);	// try to protect a global pointer from reclamation
-	void unreserve(const gptr<T>&);		// stop protecting a global pointer
+	gptr<T> reserve(const gptr<gptr<T>>&);		// try to protect a global pointer from reclamation
+	void unreserve(const gptr<T>&);			// stop protecting a global pointer
 
 private:
 	const gptr<T>		NULL_PTR 	= nullptr;

@@ -20,6 +20,8 @@ public:
 	void free(const gptr<T>&);		// deallocate global memory
 	void op_begin();			// indicate the beginning of a concurrent operation
 	void op_end();				// indicate the end of a concurrent operation
+	bool try_reserve(const gptr<gptr<T>>&,	// try to to protect a global pointer from reclamation
+			gptr<T>&);
 	gptr<T> reserve(const gptr<gptr<T>>&);	// try to protect a global pointer from reclamation
 	void unreserve(const gptr<T>&);		// stop protecting a global pointer
 
@@ -74,6 +76,12 @@ template<typename T>
 void dds::nmr::memory<T>::op_end()
 {
 	/* No-op */
+}
+
+template<typename T>
+bool dds::nmr::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, gptr<T>& val_old)
+{
+	return true;
 }
 
 template<typename T>
