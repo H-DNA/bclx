@@ -1,5 +1,5 @@
 #The main file name of your program
-OUT = primitive_sequence2
+OUT = primitive_sequence_b
 
 #The path of input files
 DIR_IN = ./ben
