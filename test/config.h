@@ -17,6 +17,7 @@ namespace dds
 
         /* Constants */
 	const uint64_t	MASTER_UNIT	= 0;
+	const uint64_t	NUM_ITERS	= 10;
 	const uint64_t	NUM_OPS		= exp2l(20);
 
 	/* Varriables */
