@@ -32,7 +32,7 @@ int main()
 		}
 		else // if (BCL::rank() != MASTER_UNIT)
 		{
-			BCL::broadcast(ptr, MASTER_UNIT);
+			BCL::broadcast(ptr, MASTER_UNIT);	// synchronize
 			ptr += BCL::rank();
 			mem.free(ptr);
 		}

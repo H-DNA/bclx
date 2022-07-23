@@ -21,14 +21,16 @@
 
 #include "memory_dang.h"	// Using Hazard Pointers + the TAKEN Field (My Rejected Journal)
 
-#include "memory_dang2.h"	// Using Hazard Pointers + SPSC Queues (push_rget)
+#include "memory_dang2.h"	// Using Hazard Pointers + SPSC Bounded Queues (push_rget)
 
-#include "memory_dang3.h"	// Using Hazard Pointers + SPSC Queues (push_load)
+#include "memory_dang3.h"	// Using Hazard Pointers + SPSC Bounded Queues (push_load)
 
 #include "memory_dang4.h"	// Using Hazard Pointers + Minimum Locality (baseline)
 
 #include "memory_dang5.h"	// Using Hazard Pointers + Maximum Locality (baseline)
 
 #include "memory_dang6.h"	// Using Hazard Pointers - Scanning (baseline)
+
+#include "memory_dang7.h"	// Using Hazard Pointers + SPSC Unbounded Queues (push_rget)
 
 #endif /* MEMORY_H */
