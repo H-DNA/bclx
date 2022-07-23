@@ -17,7 +17,7 @@ namespace dds
 
         /* Constants */
 	const uint64_t	MASTER_UNIT	= 0;
-	const uint64_t	TOTAL_OPS	= exp2l(20);
+	const uint64_t	TOTAL_OPS	= exp2l(29);
 
 	/* Varriables */
 	//std::string	stack_name;

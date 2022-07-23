@@ -69,7 +69,7 @@ int main()
 	if (BCL::rank() == MASTER_UNIT)
 	{
 		printf("*********************************************************\n");
-		printf("*\tBENCHMARK\t:\tSequence_Primitives\t*\n");
+		printf("*\tBENCHMARK\t:\tPrimitive Sequence\t*\n");
 		printf("*\tNUM_UNITS\t:\t%lu\t\t\t*\n", BCL::nprocs());
 		printf("*\tNUM_PUTS_2\t:\t%lu (ops)\t\t*\n", TOTAL_OPS);
 		printf("*\tTOTAL_TIME\t:\t%f (s)\t\t*\n", total_time_comm);
