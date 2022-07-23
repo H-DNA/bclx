@@ -6,12 +6,13 @@ using namespace dds;
 
 int main()
 {
-        uint32_t 	i;
+        uint32_t 	i,
+			j;
 	gptr<gptr<int>>	ptr;
 	double		start,
 			end,
-			elapsed_time_comm,
-			elapsed_time_comm2,
+			elapsed_time_comm = 0,
+			elapsed_time_comm2 = 0,
 			total_time_comm,
 			total_time_comm2;
 
@@ -35,23 +36,25 @@ int main()
        	start = MPI_Wtime();	// Start timing
 	if (BCL::rank() == 1)
 	{
-		for (i = 0; i < TOTAL_OPS; ++i)
-			BCL::rput_sync({i, i}, ptr);
+		for (i = 0; i < NUM_ITERS; ++i)
+			for (j = 0; j < NUM_OPS; ++j)
+				BCL::rput_sync({i, j}, ptr);
 	}
 	end = MPI_Wtime();	// Stop timing
-	elapsed_time_comm = end - start;
+	elapsed_time_comm += end - start;
 
 	// Communication 2
 	BCL::barrier();		// Barrier
 	start = MPI_Wtime();	// Start timing
 	if (BCL::rank() == 1)
 	{
-		for (i = 0; i < TOTAL_OPS - 1; ++i)
-			BCL::rput_async({i, i}, ptr);
-		BCL::rput_sync({i, i}, ptr);
+		for (i = 0; i < NUM_ITERS; ++i)
+			for (j = 0; j < NUM_OPS - 1; ++j)
+				BCL::rput_async({i, j}, ptr);
+		BCL::rput_sync({i, j}, ptr);
 	}
 	end = MPI_Wtime();	// Stop timing
-	elapsed_time_comm2 = end - start;
+	elapsed_time_comm2 += end - start;
 
 	total_time_comm = BCL::reduce(elapsed_time_comm, MASTER_UNIT, BCL::max<double>{});
 	total_time_comm2 = BCL::reduce(elapsed_time_comm2, MASTER_UNIT, BCL::max<double>{});
@@ -60,9 +63,10 @@ int main()
 		printf("*********************************************************\n");
 		printf("*\tBENCHMARK\t:\tPrimitive Sequence 2\t*\n");
 		printf("*\tNUM_UNITS\t:\t%lu\t\t\t*\n", BCL::nprocs());
-		printf("*\tNUM_PUTS_2\t:\t%lu (ops)\t\t*\n", TOTAL_OPS);
-		printf("*\tTOTAL_TIME\t:\t%f (s)\t\t*\n", total_time_comm);
-		printf("*\tTOTAL_TIME2\t:\t%f (s)\t\t*\n", total_time_comm2);
+		printf("*\tNUM_ITERS\t:\t%lu\t\t\t*\n", NUM_ITERS);
+		printf("*\tNUM_OPS\t\t:\t%lu (puts)\t\t*\n", NUM_OPS);
+		printf("*\tTOTAL_TIME\t:\t%f (s)\t\t*\n", total_time_comm / NUM_ITERS);
+		printf("*\tTOTAL_TIME2\t:\t%f (s)\t\t*\n", total_time_comm2 / NUM_ITERS);
                 printf("*********************************************************\n");
 	}
 
