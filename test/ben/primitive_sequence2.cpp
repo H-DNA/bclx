@@ -13,8 +13,10 @@ int main()
 			end,
 			elapsed_time_comm = 0,
 			elapsed_time_comm2 = 0,
+			elapsed_time_comm3 = 0,
 			total_time_comm,
-			total_time_comm2;
+			total_time_comm2,
+			total_time_comm3;
 
 	// Initialize PGAS programming model
         BCL::init();
@@ -56,8 +58,20 @@ int main()
 	end = MPI_Wtime();	// Stop timing
 	elapsed_time_comm2 += end - start;
 
+	// Communication 3
+	BCL::barrier();		// Barrier
+	start = MPI_Wtime();	// Starting timing
+	if (BCL::rank() == 1)
+	{
+		for (i = 0; i < NUM_ITERS; ++i)
+			BCL::rput_sync({i, j});
+	}
+	end = MPI_Wtime();	// Stop timing
+	elapsed_time_comm3 += end - start;
+
 	total_time_comm = BCL::reduce(elapsed_time_comm, MASTER_UNIT, BCL::max<double>{});
 	total_time_comm2 = BCL::reduce(elapsed_time_comm2, MASTER_UNIT, BCL::max<double>{});
+	total_time_comm3 = BCL::reduce(elapsed_time_comm3, MASTER_UNIT, BCL::max<double>{});
 	if (BCL::rank() == MASTER_UNIT)
 	{
 		printf("*********************************************************\n");
@@ -67,6 +81,7 @@ int main()
 		printf("*\tNUM_OPS\t\t:\t%lu (puts)\t\t*\n", NUM_OPS);
 		printf("*\tTOTAL_TIME\t:\t%f (s)\t\t*\n", total_time_comm / NUM_ITERS);
 		printf("*\tTOTAL_TIME2\t:\t%f (s)\t\t*\n", total_time_comm2 / NUM_ITERS);
+		printf("*\tTOTAL_TIME3\t:\t%f (s)\t\t*\n", total_time_comm3 / NUM_ITERS);
                 printf("*********************************************************\n");
 	}
 

@@ -1,12 +1,26 @@
 #ifndef POOL_UBD_SPSC_H
 #define POOL_UBD_SPSC_H
 
-#include <vector>	// std::vector...
-#include <cstdint>	// uint64_t...
-#include <utility>	// std::move...
+#include <vector>		// std::vector...
+#include <cstdint>		// uint64_t...
+#include <bclx/bclx.hpp>	// bclx...
 
 namespace dds
 {
+
+using namespace bclx;
+
+struct header
+{
+	gptr<header>	next;
+};
+
+template<typename T>
+struct block
+{
+	header	head;
+	T	data;
+};
 
 template<typename T>
 class pool_ubd_spsc
@@ -15,89 +29,100 @@ public:
 	pool_ubd_spsc(const uint64_t& host);
 	~pool_ubd_spsc();
 	void clear();
-	void put(const std::vector<T>& vals);
-	bool get(std::vector<T>& vals);
+	void put(const std::vector<gptr<T>>& vals);
+	bool get(gptr<header>& vals_head, gptr<header>& vals_tail);
 
 private:
-	const uint64_t	HOST;
-	gptr<T>		head;
-	gptr<T>		prev;
-
-	//uint64_t	head;
-	//uint64_t	tail_local;
-	//gptr<uint64_t>	tail;
-	//gptr<T>		items;
+	const header		NULL_PTR;
+	const uint64_t		HOST;
+	gptr<gptr<header>>	head_ptr;
+	gptr<header>		head_addr;
+	gptr<block<T>>		dummy;
 };
 
-} /* namespace dds */
-
 template<typename T>
-dds::pool_ubd_spsc<T>::pool_ubd_spsc(const uint64_t& host)
-	: HOST{host}
+pool_ubd_spsc<T>::pool_ubd_spsc(const uint64_t& host)
+				: HOST{host}
 {
-	head = BCL::alloc<T>(1);
+	// initialize the pool locally
 	if (BCL::rank() == HOST)
-		BCL::store(nullptr, head);
-
-	// synchronize	
-	head = BCL::broadcast(head, HOST);
-}
-
-template<typename T>
-dds::pool_ubd_spsc<T>::~pool_bd_spsc()
-{
-	/* No-op */
-}
-
-template<typename T>
-void dds::pool_ubd_spsc<T>::clear()
-{
-	BCL::dealloc<T>(head);
-}
-
-template<typename T>
-void dds::pool_ubd_spsc<T>::put(const std::vector<T>& vals)
-{
-	uint64_t offset = tail_local % CAPACITY;
-	gptr<T> location = items + offset;
-	const T* array = &vals[0];
-	if (offset + vals.size() <= CAPACITY)
-		BCL::rput_sync(array, location, vals.size());	// remote
-	else // if (offset + vals.size() > CAPACITY)
 	{
-		uint64_t size = CAPACITY - offset;
-		BCL::rput_sync(array, location, size);	// remote;
-		uint64_t size2 = vals.size() - size;
-		BCL::rput_sync(array + size, items, size2);	// remote
+		head_ptr = BCL::alloc<gptr<header>>(1);
+		dummy = BCL::alloc<block<T>>(1);
+		head_addr = {dummy.rank, dummy.ptr};
+		store(head_addr, head_ptr);
 	}
-	tail_local += vals.size();
-	BCL::aput_sync(tail_local, tail);	// remote
+
+	// broadcast
+	head_addr = BCL::broadcast(head_addr, HOST);	
+	head_ptr = BCL::broadcast(head_ptr, HOST);
 }
 
 template<typename T>
-bool dds::pool_ubd_spsc<T>::get(std::vector<T>& vals)
+pool_ubd_spsc<T>::~pool_ubd_spsc() {}
+
+template<typename T>
+void pool_ubd_spsc<T>::clear()
 {
-	tail_local = BCL::aget_sync(tail);	// local
-	uint64_t length = tail_local - head;
-	if (length == 0)
+	if (BCL::rank() == HOST)
+	{
+		BCL::dealloc<block<T>>(dummy);
+		BCL::dealloc<gptr<header>>(head_ptr);
+	}
+}
+
+template<typename T>
+void pool_ubd_spsc<T>::put(const std::vector<gptr<T>>& vals)
+{
+	// Prepare for the remote linked list
+	std::vector<int64_t>	disp;
+	std::vector<header>	buffer;
+	header			tmp;
+	for (uint64_t i = 0; i < vals.size(); ++i)
+	{
+		disp.push_back(int64_t(vals[i].ptr) - int64_t(vals[0].ptr));
+		if (i != vals.size() - 1)
+			tmp.next = {vals[i + 1].rank, vals[i + 1].ptr - sizeof(header)};
+		else // if (i == vals.size() - 1)
+			tmp.next = head_addr;
+		buffer.push_back(tmp);
+	}
+
+	// Link the remote global pointers and the head pointer of the pool together
+	gptr<rll_t>	base = {vals[0].rank, vals[0].ptr - sizeof(header)};
+	rll_t		rll(disp);
+	rput_sync(buffer, base, rll);	// remote
+
+	// Cache the head address of the pool
+	head_addr = {base.rank, base.ptr};
+
+	// Update the head pointer of the pool
+	aput_sync(head_addr, head_ptr);	// remote
+}
+
+template<typename T>
+bool pool_ubd_spsc<T>::get(gptr<header>&	vals_head,
+				gptr<header>&	vals_tail)
+{
+	// Get the current head address of the pool
+	gptr<header> curr = aget_sync(head_ptr);	// local
+
+	// Check if the head has been changed by the producer
+	if (curr == head_addr)
 		return false;	// the queue is empty now
-	uint64_t offset = head % CAPACITY;
-	gptr<T> location = items + offset;
-	T* array = new T[length];
-	if (offset + length <= CAPACITY)
-		BCL::load(location, array, length);	// local
-	else // if (offset + length > CAPACITY)
-	{
-		uint64_t size = CAPACITY - offset;	// local
-		BCL::load(location, array, size);
-		uint64_t size2 = length - size;
-		BCL::load(location, array + size, size2);	// local
-	}
-	for (uint64_t i = 0; i < length; ++i)
-		vals.push_back(array[i]);
-	delete[] array;
-	head += vals.size();
+
+	// Get the head of the list returned
+	vals_head = load(curr).next;	// local
+
+	// Get the tail of the list returned
+	vals_tail = head_addr;
+
+	// Cache the head of the pool
+	head_addr = curr;
+
 	return true;
 }
+
+} /* namespace dds */
 
 #endif /* POOL_UBD_SPSC_H */

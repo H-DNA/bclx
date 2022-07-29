@@ -31,6 +31,6 @@
 
 #include "memory_dang6.h"	// Using Hazard Pointers - Scanning (baseline)
 
-#include "memory_dang7.h"	// Using Hazard Pointers + SPSC Unbounded Queues (push_rget)
+#include "memory_dang7.h"	// Using Hazard Pointers + SPSC Unbounded Hosted DSs (push_rget)
 
 #endif /* MEMORY_H */

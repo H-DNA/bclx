@@ -10,6 +10,9 @@ DIR_OUT = ./out
 #The path of BCL Core
 DIR_LIB = ../bcl_ext
 
+#The path of BCL CoreX
+DIR_LIB2 = ../bclx
+
 #The number of units
 NUM_UNITS = 4
 
@@ -22,7 +25,7 @@ FLAGS = -std=gnu++17 -O3
 all : $(DIR_OUT)/$(OUT)
 
 $(DIR_OUT)/$(OUT) : $(DIR_IN)/$(OUT).cpp
-	mpic++ $(DIR_IN)/$(OUT).cpp -o $(DIR_OUT)/$(OUT) $(FLAGS) -I$(DIR_LIB)
+	mpic++ $(DIR_IN)/$(OUT).cpp -o $(DIR_OUT)/$(OUT) $(FLAGS) -I$(DIR_LIB) -I$(DIR_LIB2)
 
 #Run your program
 run : $(DIR_OUT)/$(OUT)

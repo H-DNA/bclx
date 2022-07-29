@@ -32,8 +32,8 @@ struct GlobalPtr;
 
 template <typename T>
 struct GlobalPtr {
-  uint64_t rank = 0;
-  uint64_t ptr = 0;
+  uint32_t rank = 0;
+  uint32_t ptr = 0;
 
   typedef T type;
 

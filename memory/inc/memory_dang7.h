@@ -5,6 +5,8 @@
 #include <vector>			// std::vector...
 #include <algorithm>			// std::sort...
 #include <utility>			// std::move...
+#include "../lib/header.h"		// header...
+#include "../lib/list.h"		// sds::list_gptr...
 #include "../pool/inc/pool_ubd_spsc.h"	// dds::queue_ubd_spsc...
 
 namespace dds
@@ -14,10 +16,10 @@ namespace dang7
 {
 
 template<typename T>
-class block
+struct block
 {
-	gptr<T>	ptr;
-	T	elem;
+	header	hd;
+	T	data;
 };
 
 template<typename T>
@@ -41,15 +43,14 @@ private:
         const uint64_t		HP_TOTAL	= BCL::nprocs() * HPS_PER_UNIT;
         const uint64_t		HP_WINDOW	= HP_TOTAL * 2;
 
-	gptr<block<T>>         					pool;		// allocate global memory
-	gptr<block<T>>         					pool_rep;	// deallocate global memory
-	uint64_t						capacity;	// contain global memory capacity (bytes)
-	gptr<gptr<T>>						reservation;	// be a reservation array of the calling unit
-	std::vector<gptr<T>>					list_ret;	// contain retired elems
-	std::vector<gptr<T>>					list_rec;	// contain reclaimed elems
-	uint64_t						counter;	// be a counter
-	std::vector<std::vector<gptr<T>>>			buffers;	// be local buffers
-	std::vector<std::vector<dds::pool_ubd_spsc<gptr<T>>>>	queues;		// be SPSC unbounded queues
+	gptr<block<T>>         				pool_mem;	// allocate global memory
+	gptr<block<T>>         				pool_rep;	// deallocate global memory
+	uint64_t					capacity;	// contain global memory capacity (bytes)
+	gptr<gptr<T>>					reservation;	// be a reser array of the calling unit
+	std::vector<gptr<T>>				list_ret;	// contain retired elems
+	std::vector<sds::list>				list_rec;	// contain reclaimed elems
+	std::vector<std::vector<gptr<T>>>		buffers;	// be local buffers
+	std::vector<std::vector<dds::pool_ubd_spsc<T>>>	pools;		// be SPSC unbounded pools
 
         void empty();
 };
@@ -71,14 +72,14 @@ dds::dang7::memory<T>::memory()
 		++temp;
 	}
 
-	pool = pool_rep = BCL::alloc<block<T>>(TOTAL_OPS);
-        capacity = pool.ptr + TOTAL_OPS * sizeof(block<T>);
+	pool_mem = pool_rep = BCL::alloc<block<T>>(TOTAL_OPS);
+        capacity = pool_mem.ptr + TOTAL_OPS * sizeof(block<T>);
 
 	for (uint64_t i = 0; i < BCL::nprocs(); ++i)
 	{
-		queues.push_back(std::vector<dds::queue_ubd_spsc<gptr<T>>>());
+		pools.push_back(std::vector<dds::pool_ubd_spsc<header>>());
 		for (uint64_t j = 0; j < BCL::nprocs(); ++j)
-			queues[i].push_back(dds::queue_ubd_spsc<gptr<T>>(i, TOTAL_OPS / BCL::nprocs()));
+			pools[i].push_back(dds::pool_ubd_spsc<header>(i));
 	}
 
 	counter = 0;
@@ -95,7 +96,7 @@ dds::dang7::memory<T>::~memory()
 {
 	for (uint64_t i = 0; i < BCL::nprocs(); ++i)
 		for (uint64_t j = 0; j < BCL::nprocs(); ++j)
-			queues[i][j].clear();
+			pools[i][j].clear();
 
         BCL::dealloc<block<T>>(pool_rep);
 	BCL::dealloc<gptr<T>>(reservation);
@@ -104,29 +105,50 @@ dds::dang7::memory<T>::~memory()
 template<typename T>
 dds::gptr<T> dds::dang7::memory<T>::malloc()
 {
-	++counter;
-	if (counter % HP_WINDOW == 0)
-		for (uint64_t i = 0; i < queues[BCL::rank()].size(); ++i)
+	// If list_rec is empty, scan all pools to consume reclaimed elems if any
+	if (list_rec.empty())
+	{
+		for (uint64_t i = 0; i < pools[BCL::rank()].size(); ++i)
 		{
-			std::vector<gptr<T>> temp;
-			if (queues[BCL::rank()][i].dequeue(temp))
+			gptr<header> temp;
+			if (pools[BCL::rank()][i].get(temp))
 			{
 				//printf("[%lu]%lu\n", BCL::rank(), temp.size());
-				list_rec.insert(list_rec.end(), temp.begin(), temp.end());
+				list_rec.push_back(sds::list_gptr(temp));
 			}
 		}
+	}
 
         // determine the global address of the new element
         if (!list_rec.empty())
 	{
+	header addr;
+	while (!list_rec.empty())
+	{
+		addr = list_rec.back().pop_front();
+		if (addr == nullptr)
+			list_rec.pop_back();
+		else // if (addr != nullptr)
+			return 
+	}
+
 		// tracing
 		#ifdef	TRACING
 			++elem_ru;
 		#endif
 
+		while (true)
+		{
+			gptr<header> addr = list_rec.back().pop_front();
+			if (addr == nullptr)
+				list_rec.pop_back();
+			else // if (addr != nullptr)
+				break;
+		}
+
 		gptr<T> addr = list_rec.back();
 		list_rec.pop_back();
-                return addr;
+                return {addr.rank, addr.offset + sizeof;
 	}
         else // the list of reclaimed global memory is empty
         {

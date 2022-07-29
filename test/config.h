@@ -11,10 +11,6 @@ namespace dds
 	/* Macros */
 	//#define	TRACING
 
-	/* Aliases */
-	template<typename T>
-	using gptr = BCL::GlobalPtr<T>;
-
         /* Constants */
 	const uint64_t	MASTER_UNIT	= 0;
 	const uint64_t	NUM_ITERS	= 10;

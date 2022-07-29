@@ -12,10 +12,6 @@ namespace dds
 	//#define	TRACING
 	#define		MEM_HP
 
-	/* Aliases */
-	template<typename T>
-	using gptr = BCL::GlobalPtr<T>;
-
         /* Constants */
 	const uint64_t	MASTER_UNIT	= 0;
 	const uint64_t	TOTAL_OPS	= exp2l(15);

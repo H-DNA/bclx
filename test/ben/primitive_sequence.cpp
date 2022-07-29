@@ -1,11 +1,13 @@
+#include <vector>		// std::vector...
 #include <cstdint>		// uint32_t...
-#include <bcl/bcl.hpp>		// BCL::init...
+#include <bclx/bclx.hpp>	// BCL::init...
 #include "../config.h"		// TOTAL_OPS...
-
-using namespace dds;
 
 int main()
 {
+	using namespace bclx;
+	using namespace dds;
+
         uint32_t 	i,
 			j;
 	gptr<gptr<int>>	ptr,
@@ -14,8 +16,10 @@ int main()
 			end,
 			elapsed_time = 0,
 			elapsed_time2 = 0,
+			elapsed_time3 = 0,
 			total_time,
-			total_time2;
+			total_time2,
+			total_time3;
 
 	// Initialize PGAS programming model
         BCL::init();
@@ -29,9 +33,7 @@ int main()
 
 	// Initialize shared global memory
 	if (BCL::rank() == MASTER_UNIT)
-	{
 		ptr = BCL::alloc<gptr<int>>(NUM_OPS);
-	}
 
 	// Barrier
 	ptr = BCL::broadcast(ptr, MASTER_UNIT);
@@ -39,40 +41,62 @@ int main()
 	for (i = 0; i < NUM_ITERS; ++i)
 	{
 		// Communication 1
-		BCL::barrier;		// Synchronize
+		BCL::barrier();		// Synchronize
        		start = MPI_Wtime();	// Start timing
 		if (BCL::rank() != MASTER_UNIT)
 		{
 			ptr_tmp = ptr;
 			for (j = 0; j < NUM_OPS - 1; ++j)
 			{
-				BCL::rput_sync({i, j}, ptr_tmp);
+				rput_sync({i, j}, ptr_tmp);
 				++ptr_tmp;
 			}
-			BCL::rput_sync({i, j}, ptr_tmp);
+			rput_sync({i, j}, ptr_tmp);
 		}
 		end = MPI_Wtime();	// Stop timing
 		elapsed_time += end - start;
 
 		// Communication 2
-		BCL::barrier;		// Synchronize
+		BCL::barrier();		// Synchronize
 		start = MPI_Wtime();	// Start timing
 		if (BCL::rank() != MASTER_UNIT)
 		{
 			ptr_tmp = ptr;
 			for (j = 0; j < NUM_OPS - 1; ++j)
 			{
-				BCL::rput_async({i, j}, ptr_tmp);
+				rput_async({i, j}, ptr_tmp);
 				++ptr_tmp;
 			}
-			BCL::rput_sync({i, j}, ptr_tmp);
+			rput_sync({i, j}, ptr_tmp);
 		}
 		end = MPI_Wtime();	// Stop timing
 		elapsed_time2 += end - start;
+
+		// Communication 3
+		std::vector<int64_t>	disp;
+		std::vector<gptr<int>>	buffer;
+		ptr_tmp = ptr;
+		for (j = 0; j < NUM_OPS; ++j)
+		{
+			disp.push_back(int64_t(ptr_tmp.ptr) - int64_t(ptr.ptr));
+			buffer.push_back({i, j});
+			++ptr_tmp;
+		}
+		rll_t*		rll = new rll_t(disp);
+		gptr<rll_t>	base = {ptr.rank, ptr.ptr};
+		BCL::barrier();		// Synchronize
+		start = MPI_Wtime();	// Starting timing
+		if (BCL::rank() != MASTER_UNIT)
+			rput_sync(buffer, base, *rll);
+		end = MPI_Wtime();	// Stop timing
+		elapsed_time3 += end - start;
+
+		delete rll;
 	}
 
-	total_time = BCL::reduce(elapsed_time, MASTER_UNIT, BCL::max<double>{});
-	total_time2 = BCL::reduce(elapsed_time2, MASTER_UNIT, BCL::max<double>{});
+	total_time = bclx::reduce(elapsed_time, MASTER_UNIT, BCL::max<double>{});
+	total_time2 = bclx::reduce(elapsed_time2, MASTER_UNIT, BCL::max<double>{});
+	total_time3 = bclx::reduce(elapsed_time3, MASTER_UNIT, BCL::max<double>{});
 	if (BCL::rank() == MASTER_UNIT)
 	{
 		printf("*********************************************************\n");
@@ -82,6 +106,7 @@ int main()
 		printf("*\tNUM_OPS\t\t:\t%lu (puts)\t\t*\n", NUM_OPS);
 		printf("*\tTOTAL_TIME\t:\t%f (s)\t\t*\n", total_time / NUM_ITERS);
 		printf("*\tTOTAL_TIME2\t:\t%f (s)\t\t*\n", total_time2 / NUM_ITERS);
+		printf("*\tTOTAL_TIME3\t:\t%f (s)\t\t*\n", total_time3 / NUM_ITERS);
                 printf("*********************************************************\n");
 	}
 
