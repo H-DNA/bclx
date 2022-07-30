@@ -46,6 +46,18 @@ inline void rput_async(const T &src, const gptr<T> &dst)
 }
 
 template<typename T>
+inline void rput_block(const T *src, const gptr<T> &dst, const size_t &size)
+{
+	rwrite_block(src, dst, size);
+}
+
+template<typename T>
+inline void rput_block(const T &src, const gptr<T> &dst)
+{
+	rwrite_block(&src, dst, 1);
+}
+
+template<typename T>
 inline void aput_sync(const T &src, const gptr<T> &dst)
 {
 	awrite_sync(&src, dst, 1);

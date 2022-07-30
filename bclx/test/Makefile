@@ -8,10 +8,10 @@ DIR_IN = ./ben
 DIR_OUT = ./out
 
 # The path of BCL Core
-DIR_BCL = ../bcl
+DIR_BCL = ../../bcl
 
 # The path of BCL CoreX
-DIR_BCLX = ../bclx
+DIR_BCLX = ../../bclx
 
 # The number of units
 NUM_UNITS = 2

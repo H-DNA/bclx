@@ -36,6 +36,13 @@ inline void rwrite_async(const std::vector<T> &src, const gptr<U> &dst, const U 
 }
 
 template<typename T>
+inline void rwrite_block(const T *src, const gptr<T> &dst, const size_t &size)
+{
+	MPI_Put(src, size*sizeof(T), MPI_CHAR, dst.rank, dst.ptr, size*sizeof(T), MPI_CHAR, BCL::win);
+	MPI_Win_flush_local(dst.rank, BCL::win);
+}
+
+template<typename T>
 inline void awrite_sync(const T *src, const gptr<T> &dst, const size_t &size)
 {
 	MPI_Accumulate(src, size*sizeof(T), MPI_CHAR, dst.rank, dst.ptr, size*sizeof(T), MPI_CHAR, MPI_REPLACE, BCL::win);
