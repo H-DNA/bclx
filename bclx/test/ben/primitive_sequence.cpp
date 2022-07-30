@@ -35,13 +35,13 @@ int main()
 	if (BCL::rank() == MASTER_UNIT)
 		ptr = BCL::alloc<gptr<int>>(NUM_OPS);
 
-	// Barrier
+	// Broadcast
 	ptr = BCL::broadcast(ptr, MASTER_UNIT);
 
 	for (i = 0; i < NUM_ITERS; ++i)
 	{
-		// Communication 1
-		BCL::barrier();		// Synchronize
+		/* Communication 1 */
+		bclx::barrier_sync();	// Synchronize
        		start = MPI_Wtime();	// Start timing
 		if (BCL::rank() != MASTER_UNIT)
 		{
@@ -55,9 +55,10 @@ int main()
 		}
 		end = MPI_Wtime();	// Stop timing
 		elapsed_time += end - start;
+		/**/
 
-		// Communication 2
-		BCL::barrier();		// Synchronize
+		/* Communication 2 */
+		bclx::barrier_sync();	// Synchronize
 		start = MPI_Wtime();	// Start timing
 		if (BCL::rank() != MASTER_UNIT)
 		{
@@ -71,8 +72,9 @@ int main()
 		}
 		end = MPI_Wtime();	// Stop timing
 		elapsed_time2 += end - start;
+		/**/
 
-		// Communication 3
+		/* Communication 3 */
 		std::vector<int64_t>	disp;
 		std::vector<gptr<int>>	buffer;
 		ptr_tmp = ptr;
@@ -84,7 +86,7 @@ int main()
 		}
 		rll_t*		rll = new rll_t(disp);
 		gptr<rll_t>	base = {ptr.rank, ptr.ptr};
-		BCL::barrier();		// Synchronize
+		bclx::barrier_sync();	// Synchronize
 		start = MPI_Wtime();	// Starting timing
 		if (BCL::rank() != MASTER_UNIT)
 			rput_sync(buffer, base, *rll);
@@ -93,6 +95,8 @@ int main()
 
 		delete rll;
 	}
+
+	bclx::barrier_sync();	// Synchronize
 
 	total_time = bclx::reduce(elapsed_time, MASTER_UNIT, BCL::max<double>{});
 	total_time2 = bclx::reduce(elapsed_time2, MASTER_UNIT, BCL::max<double>{});

@@ -116,6 +116,17 @@ inline void compare_and_swap_sync(const gptr<T> &dst, const T *old_val, const T 
 	MPI_Win_flush(dst.rank, BCL::win);
 }
 
+inline void barrier_sync()
+{
+	MPI_Win_flush_all(BCL::win);
+	MPI_Barrier(BCL::comm);
+}
+
+inline void barrier_async()
+{
+	MPI_Barrier(BCL::comm);
+}
+
 template<typename T, typename U>
 inline void reduce(const T *src_buf, T *dst_buf, const size_t &dst_rank, const BCL::atomic_op<U> &op, const size_t &size)
 {
