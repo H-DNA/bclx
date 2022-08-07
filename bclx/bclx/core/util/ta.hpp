@@ -1,29 +1,28 @@
-#ifndef TA_H
-#define TA_H
+#pragma once
 
 namespace ta
 {
 
-	class na
-	{
-	public:
-		int 		rank;		// the rank ID of calling process within its compute node
-		int 		size;		// # processes per compute node
-		int		*table;		// table[local_rank] == global_rank
-		int		node_id;	// the compute node ID of the calling process
-		int		node_id_master;	// the compute node ID of the master process
-		int		node_num;	// # compute nodes
-		MPI_Comm	nodeComm;	// compute node's communicator of the calling process
+class na
+{
+public:
+	int 		rank;		// the rank ID of calling process within its compute node
+	int 		size;		// # processes per compute node
+	int		*table;		// table[local_rank] == global_rank
+	int		node_id;	// the compute node ID of the calling process
+	int		node_id_master;	// the compute node ID of the master process
+	int		node_num;	// # compute nodes
+	MPI_Comm	nodeComm;	// compute node's communicator of the calling process
 
-		na();
-		~na();
-		void print();
-	};
+	na();
+	~na();
+	void print();
+};
 
-	class sa
-	{
-		//TODO
-	};
+class sa
+{
+	//TODO
+};
 
 } /* namespace ta */
 
@@ -75,4 +74,3 @@ void ta::na::print()
 		printf("[%lu]table[%d] = %d\n", BCL::rank(), i, table[i]);
 }
 
-#endif /* TA_H */

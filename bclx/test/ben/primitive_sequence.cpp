@@ -65,7 +65,7 @@ int main()
 			ptr_tmp = ptr;
 			for (j = 0; j < NUM_OPS - 1; ++j)
 			{
-				rput_block({i, j}, ptr_tmp);
+				rput_async({i, j}, ptr_tmp);
 				++ptr_tmp;
 			}
 			rput_sync({i, j}, ptr_tmp);

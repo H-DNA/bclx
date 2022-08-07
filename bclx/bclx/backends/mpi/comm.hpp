@@ -43,6 +43,15 @@ inline void rwrite_block(const T *src, const gptr<T> &dst, const size_t &size)
 }
 
 template<typename T>
+inline void rwrite_block2(const T *src, const gptr<T> &dst, const size_t &size)
+{
+	MPI_Request	request;
+	MPI_Status	status;
+	MPI_Rput(src, size*sizeof(T), MPI_CHAR, dst.rank, dst.ptr, size*sizeof(T), MPI_CHAR, BCL::win, &request);
+	MPI_Wait(&request, &status);
+}
+
+template<typename T>
 inline void awrite_sync(const T *src, const gptr<T> &dst, const size_t &size)
 {
 	MPI_Accumulate(src, size*sizeof(T), MPI_CHAR, dst.rank, dst.ptr, size*sizeof(T), MPI_CHAR, MPI_REPLACE, BCL::win);
@@ -134,6 +143,13 @@ inline void barrier_async()
 	MPI_Barrier(BCL::comm);
 }
 
+template<typename T>
+inline void scatter(const T *src_buf, T *dst_buf, const size_t &src_rank, const size_t &size)
+{
+	MPI_Scatter(src_buf, size * sizeof(T), MPI_CHAR,
+			dst_buf, size * sizeof(T), MPI_CHAR, src_rank, BCL::comm);
+}
+
 template<typename T, typename U>
 inline void reduce(const T *src_buf, T *dst_buf, const size_t &dst_rank, const BCL::atomic_op<U> &op, const size_t &size)
 {
@@ -144,6 +160,19 @@ template<typename T, typename U>
 inline void allreduce(const T *src_buf, T *dst_buf, const BCL::atomic_op<U> &op, const size_t &size)
 {
 	MPI_Allreduce(src_buf, dst_buf, size, op.type(), op.op(), BCL::comm);
+}
+
+template<typename T>
+inline void send(const T *src_buf, const size_t &dst_rank, const size_t &size)
+{
+	MPI_Send(src_buf, size*sizeof(T), MPI_CHAR, dst_rank, 0, BCL::comm);
+}
+
+template<typename T>
+inline void recv(T *dst_buf, const size_t &src_rank, const size_t &size)
+{
+	MPI_Status status;
+	MPI_Recv(dst_buf, size*sizeof(T), MPI_CHAR, src_rank, 0, BCL::comm, &status);
 }
 
 } /* namespace bclx */

@@ -58,6 +58,18 @@ inline void rput_block(const T &src, const gptr<T> &dst)
 }
 
 template<typename T>
+inline void rput_block2(const T *src, const gptr<T> &dst, const size_t &size)
+{
+	rwrite_block2(src, dst, size);
+}
+
+template<typename T>
+inline void rput_block2(const T &src, const gptr<T> &dst)
+{
+	rwrite_block2(&src, dst, 1);
+}
+
+template<typename T>
 inline void aput_sync(const T &src, const gptr<T> &dst)
 {
 	awrite_sync(&src, dst, 1);
@@ -137,6 +149,14 @@ inline T cas_sync(const gptr<T> &dst, const T &old_val, const T &new_val)
 	return rv;
 }
 
+template<typename T>
+inline T scatter(const T *src_buf, const size_t &src_rank)
+{
+	T rv;
+	scatter(src_buf, &rv, src_rank, 1);
+	return rv;
+}
+
 template<typename T, typename U>
 inline T reduce(const T &src_buf, const size_t &dst_rank, const BCL::atomic_op<U> &op)
 {
@@ -151,6 +171,18 @@ inline T allreduce(const T &src_buf, const BCL::atomic_op<U> &op)
 	T rv;
 	allreduce(&src_buf, &rv, op, 1);
 	return rv;
+}
+
+template<typename T>
+inline void send(const T& src_buf, const size_t &dst_rank)
+{
+	send(&src_buf, dst_rank, 1);
+}
+
+template<typename T>
+inline void recv(T& dst_buf, const size_t &src_rank)
+{
+	recv(&dst_buf, src_rank, 1);
 }
 
 } /* namespace bclx */

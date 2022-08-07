@@ -1,16 +1,18 @@
 #ifndef MEMORY_HP_H
 #define MEMORY_HP_H
 
-#include <cstdint>	// uint64_t...
-#include <vector>	// std::vector...
-#include <algorithm>	// std::sort...
-#include <utility>	// std::move...
+#include <cstdint>		// uint64_t...
+#include <vector>		// std::vector...
+#include <algorithm>		// std::sort...
+#include <utility>		// std::move...
 
 namespace dds
 {
 
 namespace hp
 {
+
+using namespace bclx;
 
 template<typename T>
 class memory
@@ -19,7 +21,7 @@ public:
 	memory();
 	~memory();
 	gptr<T> malloc();			// allocate global memory
-	void free(const gptr<T>&);		// deallocate global memory
+	void free(const bclx::gptr<T>&);	// deallocate global memory
 	void op_begin();			// indicate the beginning of a concurrent operation
 	void op_end();				// indicate the end of a concurrent operation
 	bool try_reserve(const gptr<gptr<T>>&,	// try to to protect a global pointer from reclamation
@@ -56,7 +58,7 @@ dds::hp::memory<T>::memory()
         gptr<gptr<T>> temp = reservation = BCL::alloc<gptr<T>>(HPS_PER_UNIT);
 	for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
 	{
-		BCL::store(NULL_PTR, temp);
+		store(NULL_PTR, temp);
 		++temp;
 	}
 
@@ -74,7 +76,7 @@ dds::hp::memory<T>::~memory()
 }
 
 template<typename T>
-dds::gptr<T> dds::hp::memory<T>::malloc()
+bclx::gptr<T> dds::hp::memory<T>::malloc()
 {
         // determine the global address of the new element
         if (!list_rec.empty())
@@ -141,18 +143,18 @@ bool dds::hp::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, const gptr<T>& va
 	{
 		gptr<gptr<T>> temp = reservation;
 		for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
-			if (BCL::aget_sync(temp) == NULL_PTR)
+			if (aget_sync(temp) == NULL_PTR)
 			{
-				BCL::aput_sync(val_old, temp);
-				gptr<T> val_new = BCL::aget_sync(ptr);	// one RMA
+				aput_sync(val_old, temp);
+				gptr<T> val_new = aget_sync(ptr);	// one RMA
 				if (val_new == NULL_PTR || val_new != val_old)
 				{
-					BCL::aput_sync(NULL_PTR, temp);
+					aput_sync(NULL_PTR, temp);
 					return false;
 				}
 				return true;
 			}
-			else // if (BCL::aget_sync(temp) != NULL_PTR)
+			else // if (aget_sync(temp) != NULL_PTR)
 				++temp;
 		printf("HP:Error\n");
 		return false;
@@ -160,25 +162,25 @@ bool dds::hp::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, const gptr<T>& va
 }
 
 template<typename T>
-dds::gptr<T> dds::hp::memory<T>::reserve(const gptr<gptr<T>>& ptr)
+bclx::gptr<T> dds::hp::memory<T>::reserve(const gptr<gptr<T>>& ptr)
 {
-	gptr<T> val_old = BCL::aget_sync(ptr);	// one RMA
+	gptr<T> val_old = aget_sync(ptr);	// one RMA
 	if (val_old == NULL_PTR)
 		return nullptr;
 	else // if (val_old != NULL_PTR)
 	{
 		gptr<gptr<T>> temp = reservation;
 		for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
-			if (BCL::aget_sync(temp) == NULL_PTR)
+			if (aget_sync(temp) == NULL_PTR)
 			{
 				gptr<T> val_new;
 				while (true)
 				{
-					BCL::aput_sync(val_old, temp);
-					val_new = BCL::aget_sync(ptr);	// one RMA
+					aput_sync(val_old, temp);
+					val_new = aget_sync(ptr);	// one RMA
 					if (val_new == NULL_PTR)
 					{
-						BCL::aput_sync(NULL_PTR, temp);
+						aput_sync(NULL_PTR, temp);
 						return nullptr;
 					}
 					else if (val_new == val_old)
@@ -187,7 +189,7 @@ dds::gptr<T> dds::hp::memory<T>::reserve(const gptr<gptr<T>>& ptr)
 						val_old = val_new;
 				}
 			}
-			else // if (BCL::aget_sync(temp) != NULL_PTR)
+			else // if (bclx::aget_sync(temp) != NULL_PTR)
 				++temp;
 		printf("HP:Error\n");
 		return nullptr;
@@ -203,12 +205,12 @@ void dds::hp::memory<T>::unreserve(const gptr<T>& ptr)
 	{
 		gptr<gptr<T>> temp = reservation;
 		for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
-			if (BCL::aget_sync(temp) == ptr)
+			if (aget_sync(temp) == ptr)
 			{
-				BCL::aput_sync(NULL_PTR, temp);
+				aput_sync(NULL_PTR, temp);
 				return;
 			}
-			else // if (BCL::aget_sync(temp) != ptr)
+			else // if (aget_sync(temp) != ptr)
 				++temp;
 		printf("HP:Error\n");
 		return;
@@ -233,7 +235,7 @@ void dds::hp::memory<T>::empty()
 		hp_temp.rank = i;
 		for (uint32_t j = 0; j < HPS_PER_UNIT; ++j)
 		{
-			addr = BCL::aget_sync(hp_temp);
+			addr = aget_sync(hp_temp);
 			if (addr != NULL_PTR)
 				plist.push_back(addr);
 			++hp_temp;

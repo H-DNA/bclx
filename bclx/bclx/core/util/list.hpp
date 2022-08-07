@@ -1,5 +1,4 @@
-#ifndef	LIST_H
-#define LIST_H
+#pragma once
 
 #include "header.h"
 
@@ -35,4 +34,3 @@ header sds::list::pop_front()
 	return res;
 }
 
-#endif /* LIST_H */

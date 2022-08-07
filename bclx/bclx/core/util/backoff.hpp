@@ -1,5 +1,4 @@
-#ifndef BACKOFF_H
-#define BACKOFF_H
+#pragma once
 
 #include <thread>
 #include <chrono>
@@ -10,19 +9,19 @@
 namespace backoff
 {
 
-        class backoff
-        {
-        public:
-                backoff(const uint64_t &init, const uint64_t &max);
-                uint64_t delay_exp();
-		uint64_t delay_dbl();
-		uint64_t delay_inc();
+class backoff
+{
+public:
+	backoff(const uint64_t &init, const uint64_t &max);
+	uint64_t delay_exp();
+	uint64_t delay_dbl();
+	uint64_t delay_inc();
 
-        private:
-		uint64_t	bk;
-		uint64_t	bk_max;
-		uint64_t	res;
-	};
+private:
+	uint64_t	bk;
+	uint64_t	bk_max;
+	uint64_t	res;
+};
 
 } /* namespace backoff */
 
@@ -76,4 +75,3 @@ uint64_t backoff::backoff::delay_inc()
 	return res;
 }
 
-#endif /* BACKOFF_H */
