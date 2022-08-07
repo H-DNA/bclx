@@ -21,7 +21,8 @@ public:
 	memory();
 	~memory();
 	gptr<T> malloc();			// allocate global memory
-	void free(const bclx::gptr<T>&);	// deallocate global memory
+	void free(const gptr<T>&);		// deallocate global memory
+	void retire(const gptr<T>&);		// retire a global pointer
 	void op_begin();			// indicate the beginning of a concurrent operation
 	void op_end();				// indicate the end of a concurrent operation
 	bool try_reserve(const gptr<gptr<T>>&,	// try to to protect a global pointer from reclamation
@@ -115,9 +116,20 @@ bclx::gptr<T> dds::hp::memory<T>::malloc()
 }
 
 template<typename T>
-void dds::hp::memory<T>::free(const gptr<T>& addr)
+void dds::hp::memory<T>::free(const gptr<T>& ptr)
 {
-	list_ret.push_back(addr);
+	// tracing
+	#ifdef	TRACING
+		++elem_rc;
+	#endif
+
+	list_rec.push_back(ptr);
+}
+
+template<typename T>
+void dds::hp::memory<T>::retire(const gptr<T>& ptr)
+{
+	list_ret.push_back(ptr);
 	if (list_ret.size() >= HP_WINDOW)
 		empty();
 }

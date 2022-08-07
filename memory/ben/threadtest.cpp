@@ -10,7 +10,7 @@
 
 /* Benchmark-specific tuning parameters */
 const uint64_t	NUM_ITERS	= 5000;
-const uint64_t	NUM_BLOCKS	= exp2l(17);
+const uint64_t	NUM_BLOCKS	= 7 * exp2l(15);
 
 /* 64-byte block structure */
 struct block

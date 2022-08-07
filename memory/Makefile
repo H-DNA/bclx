@@ -1,5 +1,5 @@
 # The file name of your program
-OUT = linux_scalability
+OUT = threadtest
 
 # The path of input files
 DIR_IN = ./ben
