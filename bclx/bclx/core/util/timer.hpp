@@ -27,7 +27,7 @@ bclx::timer::~timer() {}
 
 void bclx::timer::start()
 {
-	time_elapsed = MPI_Wtime();
+	time_start = MPI_Wtime();
 }
 
 void bclx::timer::stop()
