@@ -10,7 +10,7 @@ namespace dds
 
 	/* Macros */
 	//#define	TRACING
-	#define		MEM_HP
+	#define		MEM_DANG2
 
         /* Constants */
 	const uint64_t	MASTER_UNIT	= 0;

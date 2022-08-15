@@ -1,9 +1,9 @@
 #ifndef STACK_EB_NA_H
 #define STACK_EB_NA_H
 
-#include <random>
-#include "../../lib/backoff.h"
-#include "../../lib/ta.h"
+#include <random>			// std::uniform_int_distribution...
+#include <bclx/core/util/backoff.hpp>	// backoff::backoff...
+#include <bclx/core/util/ta.hpp>		// ta::na...
 
 namespace dds
 {

@@ -9,23 +9,26 @@ int main()
 	BCL::init();
 
 	gptr<dds::block<int>> handle = BCL::alloc<dds::block<int>>(1024);
-	BCL::barrier();
+	bclx::barrier_sync();
 	
 	dds::pool_ubd_spsc<int> my_pool(0);
 
 	if (BCL::rank() == 0)
 	{
+		dds::list_seq rlist;
 		for (int i = 0; i < 2; ++i)
 		{
-			BCL::barrier();	// synchronize
+			bclx::barrier_sync();	// synchronize
 
-			gptr<dds::header> head, tail;
-			my_pool.get(head, tail);
+			dds::list_seq slist;
+			my_pool.get(slist);
 
-			// debugging
-			for (gptr<dds::header> tmp = head; tmp != tail; tmp = rget_sync(tmp).next)
-				printf("[%lu]CP20: <%u, %u>\n", BCL::rank(), tmp.rank, tmp.ptr);
-			printf("[%lu]CP20: <%u, %u>\n", BCL::rank(), tail.rank, tail.ptr);
+			printf("----------------\n");
+			slist.print();
+
+			rlist.append(slist);
+			printf("****************\n");
+			rlist.print();
 		}
 	}
 	else // if (BCL::rank() == 1)
@@ -52,11 +55,11 @@ int main()
 
 			dang.clear();
 
-			BCL::barrier();	// synchronize
+			bclx::barrier_sync();	// synchronize
 		}
 	}
 
-	BCL::barrier();
+	bclx::barrier_sync();
 	BCL::dealloc<dds::block<int>>(handle);
 
 	BCL::finalize();

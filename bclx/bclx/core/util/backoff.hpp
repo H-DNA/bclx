@@ -1,12 +1,10 @@
 #pragma once
 
-#include <thread>
-#include <chrono>
-#include <random>
-#include <cmath>
-#include "../config.h"
+#include <thread>	// std::this_thread::sleep_for...
+#include <chrono>	// std::chrono::microseconds...
+#include <random>	// std::uniform_int_distribution...
 
-namespace backoff
+namespace bclx
 {
 
 class backoff
@@ -23,15 +21,15 @@ private:
 	uint64_t	res;
 };
 
-} /* namespace backoff */
+} /* namespace bclx */
 
-backoff::backoff::backoff(const uint64_t &init, const uint64_t &max)
+bclx::backoff::backoff(const uint64_t &init, const uint64_t &max)
 {
         bk = init;
 	bk_max = max;
 }
 
-uint64_t backoff::backoff::delay_exp()
+uint64_t bclx::backoff::delay_exp()
 {
 	if (bk > bk_max)
 		bk = bk_max;
@@ -47,7 +45,7 @@ uint64_t backoff::backoff::delay_exp()
 	return res;
 }
 
-uint64_t backoff::backoff::delay_dbl()
+uint64_t bclx::backoff::delay_dbl()
 {
 	if (bk > bk_max)
 		bk = bk_max;
@@ -61,7 +59,7 @@ uint64_t backoff::backoff::delay_dbl()
 	return res;
 }
 
-uint64_t backoff::backoff::delay_inc()
+uint64_t bclx::backoff::delay_inc()
 {
 	if (bk > bk_max)
 		bk = bk_max;

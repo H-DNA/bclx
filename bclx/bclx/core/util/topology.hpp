@@ -1,9 +1,9 @@
 #pragma once
 
-namespace ta
+namespace bclx
 {
 
-class na
+class topology
 {
 public:
 	int 		rank;		// the rank ID of calling process within its compute node
@@ -14,8 +14,8 @@ public:
 	int		node_num;	// # compute nodes
 	MPI_Comm	nodeComm;	// compute node's communicator of the calling process
 
-	na();
-	~na();
+	topology();
+	~topology();
 	void print();
 };
 
@@ -24,9 +24,9 @@ class sa
 	//TODO
 };
 
-} /* namespace ta */
+} /* namespace bclx */
 
-ta::na::na()
+bclx::topology::topology()
 {
 	MPI_Comm	leaderComm;
 	MPI_Group	group,
@@ -63,12 +63,12 @@ ta::na::na()
 	MPI_Bcast(&node_id_master, 1, MPI_INT, 0, BCL::comm);
 }
 
-ta::na::~na()
+bclx::topology::~topology()
 {
 	delete[] table;
 }
 
-void ta::na::print()
+void bclx::topology::print()
 {
 	for (int i = 0; i < size; ++i)
 		printf("[%lu]table[%d] = %d\n", BCL::rank(), i, table[i]);

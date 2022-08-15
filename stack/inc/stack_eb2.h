@@ -1,8 +1,8 @@
 #ifndef STACK_EB2_H
 #define STACK_EB2_H
 
-#include <random>
-#include "../../lib/backoff.h"
+#include <random>			// std::uniform_int_distribution...
+#include <bclx/core/util/backoff.hpp>	// backoff::backoff...
 
 namespace dds
 {

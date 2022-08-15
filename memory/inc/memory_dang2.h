@@ -13,6 +13,8 @@ namespace dds
 namespace dang2
 {
 
+using namespace bclx;
+
 template<typename T>
 class memory
 {
@@ -21,6 +23,7 @@ public:
 	~memory();
 	gptr<T> malloc();				// allocate global memory
 	void free(const gptr<T>&);			// deallocate global memory
+	void retire(const gptr<T>&);			// retire a global pointer
 	void op_begin();				// indicate the beginning of a concurrent operation
 	void op_end();					// indicate the end of a concurrent operation
 	gptr<T> try_reserve(const gptr<gptr<T>>&,	// try to to protect a global pointer from reclamation
@@ -60,7 +63,7 @@ dds::dang2::memory<T>::memory()
         gptr<gptr<T>> temp = reservation = BCL::alloc<gptr<T>>(HPS_PER_UNIT);
 	for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
 	{
-		BCL::store(NULL_PTR, temp);
+		bclx::store(NULL_PTR, temp);
 		++temp;
 	}
 
@@ -95,7 +98,7 @@ dds::dang2::memory<T>::~memory()
 }
 
 template<typename T>
-dds::gptr<T> dds::dang2::memory<T>::malloc()
+bclx::gptr<T> dds::dang2::memory<T>::malloc()
 {
 	++counter;
 	if (counter % HP_WINDOW == 0)
@@ -152,9 +155,17 @@ dds::gptr<T> dds::dang2::memory<T>::malloc()
 }
 
 template<typename T>
-void dds::dang2::memory<T>::free(const gptr<T>& addr)
+void dds::dang2::memory<T>::free(const gptr<T>& ptr)
 {
-	list_ret.push_back(addr);
+	buffers[ptr.rank].push_back(ptr);
+	if (buffers[ptr.rank].size() == HP_WINDOW)
+		queues[ptr.rank][BCL::rank()].enqueue(std::move(buffers[ptr.rank]));
+}
+
+template<typename T>
+void dds::dang2::memory<T>::retire(const gptr<T>& ptr)
+{
+	list_ret.push_back(ptr);
 	if (list_ret.size() >= HP_WINDOW)
 		empty();
 }
@@ -172,7 +183,7 @@ void dds::dang2::memory<T>::op_end()
 }
 
 template<typename T>
-dds::gptr<T> dds::dang2::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, const gptr<T>& val_old)
+bclx::gptr<T> dds::dang2::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, const gptr<T>& val_old)
 {
 	if (val_old == nullptr)
 		return nullptr;
@@ -180,15 +191,15 @@ dds::gptr<T> dds::dang2::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, const 
 	{
 		gptr<gptr<T>> temp = reservation;
 		for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
-			if (BCL::aget_sync(temp) == NULL_PTR)
+			if (bclx::aget_sync(temp) == NULL_PTR)
 			{
-				BCL::aput_sync(val_old, temp);
-				gptr<T> val_new = BCL::aget_sync(ptr);	// one RMA
+				bclx::aput_sync(val_old, temp);
+				gptr<T> val_new = bclx::aget_sync(ptr);	// one RMA
 				if (val_new == nullptr || val_new != val_old)
-					BCL::aput_sync(NULL_PTR, temp);
+					bclx::aput_sync(NULL_PTR, temp);
 				return val_new;
 			}
-			else // if (BCL::aget_sync(temp) != NULL_PTR)
+			else // if (bclx::aget_sync(temp) != NULL_PTR)
 				++temp;
 		printf("HP:Error\n");
 		return nullptr;
@@ -196,25 +207,25 @@ dds::gptr<T> dds::dang2::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, const 
 }
 
 template<typename T>
-dds::gptr<T> dds::dang2::memory<T>::reserve(const gptr<gptr<T>>& ptr)
+bclx::gptr<T> dds::dang2::memory<T>::reserve(const gptr<gptr<T>>& ptr)
 {
-	gptr<T> val_old = BCL::aget_sync(ptr);	// one RMA
+	gptr<T> val_old = bclx::aget_sync(ptr);	// one RMA
 	if (val_old == nullptr)
 		return nullptr;
 	else // if (val_old != nullptr)
 	{
 		gptr<gptr<T>> temp = reservation;
 		for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
-			if (BCL::aget_sync(temp) == NULL_PTR)
+			if (bclx::aget_sync(temp) == NULL_PTR)
 			{
 				gptr<T> val_new;
 				while (true)
 				{
-					BCL::aput_sync(val_old, temp);
-					val_new = BCL::aget_sync(ptr);	// one RMA
+					bclx::aput_sync(val_old, temp);
+					val_new = bclx::aget_sync(ptr);	// one RMA
 					if (val_new == nullptr)
 					{
-						BCL::aput_sync(NULL_PTR, temp);
+						bclx::aput_sync(NULL_PTR, temp);
 						return nullptr;
 					}
 					else if (val_new == val_old)
@@ -223,7 +234,7 @@ dds::gptr<T> dds::dang2::memory<T>::reserve(const gptr<gptr<T>>& ptr)
 						val_old = val_new;
 				}
 			}
-			else // if (BCL::aget_sync(temp) != NULL_PTR)
+			else // if (bclx::aget_sync(temp) != NULL_PTR)
 				++temp;
 		printf("HP:Error\n");
 		return nullptr;
@@ -239,12 +250,12 @@ void dds::dang2::memory<T>::unreserve(const gptr<T>& ptr)
 	{
 		gptr<gptr<T>> temp = reservation;
 		for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
-			if (BCL::aget_sync(temp) == ptr)
+			if (bclx::aget_sync(temp) == ptr)
 			{
-				BCL::aput_sync(NULL_PTR, temp);
+				bclx::aput_sync(NULL_PTR, temp);
 				return;
 			}
-			else // if (BCL::aget_sync(temp) != ptr)
+			else // if (bclx::aget_sync(temp) != ptr)
 				++temp;
 		printf("HP:Error\n");
 		return;
@@ -257,7 +268,7 @@ void dds::dang2::memory<T>::empty()
 	std::vector<gptr<T>>	plist;		// contain non-null hazard pointers
 	std::vector<gptr<T>>	new_dlist;	// be dlist after finishing the Scan function
 	gptr<gptr<T>> 		hp_temp;	// a temporary variable
-	gptr<T>			addr;		// a temporary variable
+	gptr<T>			ptr;		// a temporary variable
 
 	plist.reserve(HP_TOTAL);
 	new_dlist.reserve(HP_TOTAL);
@@ -269,9 +280,9 @@ void dds::dang2::memory<T>::empty()
 		hp_temp.rank = i;
 		for (uint32_t j = 0; j < HPS_PER_UNIT; ++j)
 		{
-			addr = BCL::aget_sync(hp_temp);
-			if (addr != NULL_PTR)
-				plist.push_back(addr);
+			ptr = bclx::aget_sync(hp_temp);
+			if (ptr != NULL_PTR)
+				plist.push_back(ptr);
 			++hp_temp;
 		}
 	}
@@ -283,10 +294,10 @@ void dds::dang2::memory<T>::empty()
 	// Stage 3
         while (!list_ret.empty())
 	{
-		addr = list_ret.back();
+		ptr = list_ret.back();
 		list_ret.pop_back();
-		if (std::binary_search(plist.begin(), plist.end(), addr))
-			new_dlist.push_back(addr);
+		if (std::binary_search(plist.begin(), plist.end(), ptr))
+			new_dlist.push_back(ptr);
 		else
 		{
 			// tracing
@@ -294,9 +305,7 @@ void dds::dang2::memory<T>::empty()
 				++elem_rc;
 			#endif
 
-			buffers[addr.rank].push_back(addr);
-			if (buffers[addr.rank].size() == HP_WINDOW)
-				queues[addr.rank][BCL::rank()].enqueue(std::move(buffers[addr.rank]));
+			free(ptr);
 		}
 	}
 

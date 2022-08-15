@@ -9,38 +9,38 @@ namespace dds
 namespace bs
 {
 
-	/* Macros */
-	#ifdef MEM_REC
-		using namespace dang2;
-	#else
-		using namespace dang3;
-	#endif
+/* Macros */
+#ifdef MEM_REC
+	using namespace dang2;
+#else
+	using namespace dang3;
+#endif
 
-	/* Data types */
-        template <typename T>
-        struct elem
-        {
-                gptr<elem<T>>   next;
-                T               value;
-        };
+/* Data types */
+template<typename T>
+struct elem
+{
+	gptr<elem<T>>	next;
+	T		value;
+};
 
-	template <typename T>
-	class stack
-	{
-	public:
-		stack();			//collective
-		~stack();			//collective
-		void push(const T &);		//non-collective
-		bool pop(T *);			//non-collective
-		void print();			//collective
+template<typename T>
+class stack
+{
+public:
+	stack();		//collective
+	~stack();		//collective
+	void push(const T&);	//non-collective
+	bool pop(T*);		//non-collective
+	void print();		//collective
 
-	private:
-        	const gptr<elem<T>>	NULL_PTR = nullptr;	//is a null constant
+private:
+	const gptr<elem<T>>	NULL_PTR = nullptr;	//is a null constant
 
-		memory<elem<T>>		mem;	//handle global memory
-		mcsl::lock		lock;	//lock mutexs
-                gptr<gptr<elem<T>>>	top;	//point to global address of the top
-	};
+	memory<elem<T>>		mem;	//handle global memory
+	mcsl::lock		lock;	//lock mutexs
+	gptr<gptr<elem<T>>>	top;	//point to global address of the top
+};
 
 } /* namespace bs */
 

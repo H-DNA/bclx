@@ -1,5 +1,5 @@
-#ifndef MEMORY_DANG5_H
-#define MEMORY_DANG5_H
+#ifndef MEMORY_BL3_H
+#define MEMORY_BL3_H
 
 #include <cstdint>	// uint64_t...
 #include <vector>	// std::vector...
@@ -9,8 +9,10 @@
 namespace dds
 {
 
-namespace dang5
+namespace bl3
 {
+
+using namespace bclx;
 
 template<typename T>
 class memory
@@ -43,20 +45,20 @@ private:
 	void empty();
 };
 
-} /* namespace dang5 */
+} /* namespace bl3 */
 
 } /* namespace dds */
 
 template<typename T>
-dds::dang5::memory<T>::memory()
+dds::bl3::memory<T>::memory()
 {
 	if (BCL::rank() == MASTER_UNIT)
-		mem_manager = "DANG5";
+		mem_manager = "BASELINE3";
 
         gptr<gptr<T>> temp = reservation = BCL::alloc<gptr<T>>(HPS_PER_UNIT);
 	for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
 	{
-		BCL::store(NULL_PTR, temp);
+		store(NULL_PTR, temp);
 		++temp;
 	}
 
@@ -67,14 +69,14 @@ dds::dang5::memory<T>::memory()
 }
 
 template<typename T>
-dds::dang5::memory<T>::~memory()
+dds::bl3::memory<T>::~memory()
 {
         BCL::dealloc<T>(pool_rep);
 	BCL::dealloc<gptr<T>>(reservation);
 }
 
 template<typename T>
-dds::gptr<T> dds::dang5::memory<T>::malloc()
+bclx::gptr<T> dds::bl3::memory<T>::malloc()
 {
 	// determine the global address of the new element
 	if (pool.ptr < capacity)
@@ -83,27 +85,27 @@ dds::gptr<T> dds::dang5::memory<T>::malloc()
 }
 
 template<typename T>
-void dds::dang5::memory<T>::free(const gptr<T>& addr)
+void dds::bl3::memory<T>::free(const gptr<T>& ptr)
 {
-	list_ret.push_back(addr);
+	list_ret.push_back(ptr);
 	if (list_ret.size() >= HP_WINDOW)
 		empty();
 }
 
 template<typename T>
-void dds::dang5::memory<T>::op_begin()
+void dds::bl3::memory<T>::op_begin()
 {
 	/* No-op */
 }
 
 template<typename T>
-void dds::dang5::memory<T>::op_end()
+void dds::bl3::memory<T>::op_end()
 {
 	/* No-op */
 }
 
 template<typename T>
-dds::gptr<T> dds::dang5::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, const gptr<T>& val_old)
+bclx::gptr<T> dds::bl3::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, const gptr<T>& val_old)
 {
 	if (val_old == nullptr)
 		return nullptr;
@@ -111,15 +113,15 @@ dds::gptr<T> dds::dang5::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, const 
 	{
 		gptr<gptr<T>> temp = reservation;
 		for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
-			if (BCL::aget_sync(temp) == NULL_PTR)
+			if (aget_sync(temp) == NULL_PTR)
 			{
-				BCL::aput_sync(val_old, temp);
-				gptr<T> val_new = BCL::aget_sync(ptr);	// one RMA
+				aput_sync(val_old, temp);
+				gptr<T> val_new = aget_sync(ptr);	// one RMA
 				if (val_new == nullptr || val_new != val_old)
-					BCL::aput_sync(NULL_PTR, temp);
+					aput_sync(NULL_PTR, temp);
 				return val_new;
 			}
-			else // if (BCL::aget_sync(temp) != NULL_PTR)
+			else // if (aget_sync(temp) != NULL_PTR)
 				++temp;
 		printf("HP:Error\n");
 		return nullptr;
@@ -127,25 +129,25 @@ dds::gptr<T> dds::dang5::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, const 
 }
 
 template<typename T>
-dds::gptr<T> dds::dang5::memory<T>::reserve(const gptr<gptr<T>>& ptr)
+bclx::gptr<T> dds::bl3::memory<T>::reserve(const gptr<gptr<T>>& ptr)
 {
-	gptr<T> val_old = BCL::aget_sync(ptr);	// one RMA
+	gptr<T> val_old = aget_sync(ptr);	// one RMA
 	if (val_old == nullptr)
 		return nullptr;
 	else // if (val_old != nullptr)
 	{
 		gptr<gptr<T>> temp = reservation;
 		for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
-			if (BCL::aget_sync(temp) == NULL_PTR)
+			if (aget_sync(temp) == NULL_PTR)
 			{
 				gptr<T> val_new;
 				while (true)
 				{
-					BCL::aput_sync(val_old, temp);
-					val_new = BCL::aget_sync(ptr);	// one RMA
+					aput_sync(val_old, temp);
+					val_new = aget_sync(ptr);	// one RMA
 					if (val_new == nullptr)
 					{
-						BCL::aput_sync(NULL_PTR, temp);
+						aput_sync(NULL_PTR, temp);
 						return nullptr;
 					}
 					else if (val_new == val_old)
@@ -154,7 +156,7 @@ dds::gptr<T> dds::dang5::memory<T>::reserve(const gptr<gptr<T>>& ptr)
 						val_old = val_new;
 				}
 			}
-			else // if (BCL::aget_sync(temp) != NULL_PTR)
+			else // if (aget_sync(temp) != NULL_PTR)
 				++temp;
 		printf("HP:Error\n");
 		return nullptr;
@@ -162,7 +164,7 @@ dds::gptr<T> dds::dang5::memory<T>::reserve(const gptr<gptr<T>>& ptr)
 }
 
 template<typename T>
-void dds::dang5::memory<T>::unreserve(const gptr<T>& ptr)
+void dds::bl3::memory<T>::unreserve(const gptr<T>& ptr)
 {
 	if (ptr == nullptr)
 		return;
@@ -170,12 +172,12 @@ void dds::dang5::memory<T>::unreserve(const gptr<T>& ptr)
 	{
 		gptr<gptr<T>> temp = reservation;
 		for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
-			if (BCL::aget_sync(temp) == ptr)
+			if (aget_sync(temp) == ptr)
 			{
-				BCL::aput_sync(NULL_PTR, temp);
+				aput_sync(NULL_PTR, temp);
 				return;
 			}
-			else // if (BCL::aget_sync(temp) != ptr)
+			else // if (aget_sync(temp) != ptr)
 				++temp;
 		printf("HP:Error\n");
 		return;
@@ -183,7 +185,7 @@ void dds::dang5::memory<T>::unreserve(const gptr<T>& ptr)
 }
 
 template<typename T>
-void dds::dang5::memory<T>::empty()
+void dds::bl3::memory<T>::empty()
 {	
 	std::vector<gptr<T>>	plist;		// contain non-null hazard pointers
 	std::vector<gptr<T>>	new_dlist;	// be dlist after finishing the Scan function
@@ -200,7 +202,7 @@ void dds::dang5::memory<T>::empty()
 		hp_temp.rank = i;
 		for (uint32_t j = 0; j < HPS_PER_UNIT; ++j)
 		{
-			addr = BCL::aget_sync(hp_temp);
+			addr = aget_sync(hp_temp);
 			if (addr != NULL_PTR)
 				plist.push_back(addr);
 			++hp_temp;
@@ -233,4 +235,4 @@ void dds::dang5::memory<T>::empty()
 	list_ret = std::move(new_dlist);
 }
 
-#endif /* MEMORY_DANG5_H */
+#endif /* MEMORY_BL3_H */

@@ -7,26 +7,28 @@ namespace dds
 namespace mcsl
 {
 
-	struct elem
-	{
-		gptr<elem>	next;
-		bool		locked;
-	};
+using namespace bclx;
 
-	class lock
-	{
-	public:
-		lock();
-		~lock();
-		void acquire();
-		void release();
+struct elem
+{
+	gptr<elem>	next;
+	bool		locked;
+};
 
-	private:
-                const gptr<elem>	NULL_PTR = nullptr;     //is a null constant
+class lock
+{
+public:
+	lock();
+	~lock();
+	void acquire();
+	void release();
 
-		gptr<gptr<elem>> 	tail;
-		gptr<elem>		self;
-	};
+private:
+	const gptr<elem>	NULL_PTR = nullptr;     //is a null constant
+
+	gptr<gptr<elem>> 	tail;
+	gptr<elem>		self;
+};
 
 } /* namespace mcsl */
 
@@ -35,7 +37,7 @@ namespace mcsl
 dds::mcsl::lock::lock()
 {
 	//synchronize
-	BCL::barrier();
+	barrier_sync();
 
 	self = BCL::alloc<elem>(1);
 	tail = BCL::alloc<gptr<elem>>(1);
@@ -43,10 +45,10 @@ dds::mcsl::lock::lock()
 
         //initialize value of tail (dummy node)
         if (BCL::rank() == MASTER_UNIT)
-        	BCL::store(NULL_PTR, tail);
+        	store(NULL_PTR, tail);
 
         //synchronize
-	BCL::barrier();
+	barrier_sync();
 }
 
 dds::mcsl::lock::~lock()
@@ -63,16 +65,16 @@ void dds::mcsl::lock::acquire()
 	gptr<bool>		lockedAddr;
 
 	nextAddr = {self.rank, self.ptr};
-	BCL::store(NULL_PTR, nextAddr);
+	store(NULL_PTR, nextAddr);
 
-	prevAddr = BCL::fao_sync(tail, self, BCL::replace<uint64_t>{});
+	prevAddr = fao_sync(tail, self, BCL::replace<uint64_t>{});
 	if (prevAddr != nullptr)	//queue was non-empty
 	{
 		lockedAddr = {self.rank, self.ptr + sizeof(gptr<elem>)};
-		BCL::store(true, lockedAddr);
+		store(true, lockedAddr);
 
 		nextAddr = {prevAddr.rank, prevAddr.ptr};
-		BCL::aput_sync(self, nextAddr);
+		aput_sync(self, nextAddr);
 
 		while (aget_sync(lockedAddr));	//spin
 	}
@@ -86,11 +88,11 @@ void dds::mcsl::lock::release()
         gptr<bool>		lockedAddr;
 
 	nextAddr = {self.rank, self.ptr};
-	nextVal = BCL::aget_sync(nextAddr);
+	nextVal = aget_sync(nextAddr);
 
 	if (nextVal == nullptr)	//no known successor
 	{
-		result = BCL::cas_sync(tail, self, NULL_PTR);
+		result = cas_sync(tail, self, NULL_PTR);
 		if (result == self)
 		{
 			return;
@@ -98,12 +100,12 @@ void dds::mcsl::lock::release()
 		}
 
 		do {
-			nextVal = BCL::aget_sync(nextAddr);
+			nextVal = aget_sync(nextAddr);
 		} while (nextVal == nullptr);	//spin
 	}
 
 	lockedAddr = {nextVal.rank, nextVal.ptr + sizeof(gptr<elem>)};
-	BCL::aput_sync(false, lockedAddr);
+	aput_sync(false, lockedAddr);
 }
 
 #endif /* LOCK_MCS_H */

@@ -20,12 +20,12 @@ public:
 	bool dequeue(std::vector<T>& vals);
 
 private:
-	const uint64_t	HOST;
-	const uint64_t	CAPACITY;
-	uint64_t	head;
-	uint64_t	tail_local;
-	gptr<uint64_t>	tail;
-	gptr<T>		items;
+	const uint64_t		HOST;
+	const uint64_t		CAPACITY;
+	uint64_t		head;
+	uint64_t		tail_local;
+	bclx::gptr<uint64_t>	tail;
+	bclx::gptr<T>		items;
 };
 
 } /* namespace dds */
@@ -38,7 +38,7 @@ dds::queue_spsc<T>::queue_spsc(const uint64_t&	host,
 	if (BCL::rank() == HOST)
 	{
 		tail = BCL::alloc<uint64_t>(1);
-		BCL::store(uint64_t(0), tail);
+		bclx::store(uint64_t(0), tail);
 
 		items = BCL::alloc<T>(CAPACITY);
 	}
@@ -68,39 +68,39 @@ template<typename T>
 void dds::queue_spsc<T>::enqueue(const std::vector<T>& vals)
 {
 	uint64_t offset = tail_local % CAPACITY;
-	gptr<T> location = items + offset;
+	bclx::gptr<T> location = items + offset;
 	const T* array = &vals[0];
 	if (offset + vals.size() <= CAPACITY)
-		BCL::rput_sync(array, location, vals.size());	// remote
+		bclx::rput_sync(array, location, vals.size());	// remote
 	else // if (offset + vals.size() > CAPACITY)
 	{
 		uint64_t size = CAPACITY - offset;
-		BCL::rput_sync(array, location, size);	// remote;
+		bclx::rput_sync(array, location, size);	// remote;
 		uint64_t size2 = vals.size() - size;
-		BCL::rput_sync(array + size, items, size2);	// remote
+		bclx::rput_sync(array + size, items, size2);	// remote
 	}
 	tail_local += vals.size();
-	BCL::aput_sync(tail_local, tail);	// remote
+	bclx::aput_sync(tail_local, tail);	// remote
 }
 
 template<typename T>
 bool dds::queue_spsc<T>::dequeue(std::vector<T>& vals)
 {
-	tail_local = BCL::aget_sync(tail);	// local
+	tail_local = bclx::aget_sync(tail);	// local
 	uint64_t length = tail_local - head;
 	if (length == 0)
 		return false;	// the queue is empty now
 	uint64_t offset = head % CAPACITY;
-	gptr<T> location = items + offset;
+	bclx::gptr<T> location = items + offset;
 	T* array = new T[length];
 	if (offset + length <= CAPACITY)
-		BCL::load(location, array, length);	// local
+		bclx::load(location, array, length);	// local
 	else // if (offset + length > CAPACITY)
 	{
 		uint64_t size = CAPACITY - offset;	// local
-		BCL::load(location, array, size);
+		bclx::load(location, array, size);
 		uint64_t size2 = length - size;
-		BCL::load(location, array + size, size2);	// local
+		bclx::load(location, array + size, size2);	// local
 	}
 	for (uint64_t i = 0; i < length; ++i)
 		vals.push_back(array[i]);

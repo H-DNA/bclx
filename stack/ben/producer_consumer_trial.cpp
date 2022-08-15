@@ -1,9 +1,8 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
-#include <bcl/bcl.hpp>
+#include <bclx/bclx.hpp>
 #include "../inc/stack.h"
-#include "../../lib/ta.h"
 
 using namespace dds;
 using namespace dds::ts;
@@ -256,7 +255,7 @@ inline double work_time(stack<T> *my_stack, const uint64_t &num_ops, const uint3
 
 	elapsed_time = (end - start) - ((double) num_ops * WORKLOAD) / 1000000;
 
-	total_time = BCL::allreduce(elapsed_time, BCL::max<double>{});
+	total_time = bclx::allreduce(elapsed_time, BCL::max<double>{});
 
 	return total_time;
 }

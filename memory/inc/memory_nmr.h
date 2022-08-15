@@ -10,6 +10,8 @@ namespace dds
 namespace nmr
 {
 
+using namespace bclx;
+
 template<typename T>
 class memory
 {
@@ -52,7 +54,7 @@ dds::nmr::memory<T>::~memory()
 }
 
 template<typename T>
-dds::gptr<T> dds::nmr::memory<T>::malloc()
+bclx::gptr<T> dds::nmr::memory<T>::malloc()
 {
         // determine the global address of the new element
         if (pool.ptr < capacity)
@@ -85,7 +87,7 @@ bool dds::nmr::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, gptr<T>& val_old
 }
 
 template<typename T>
-dds::gptr<T> dds::nmr::memory<T>::reserve(const gptr<gptr<T>>& ptr)
+bclx::gptr<T> dds::nmr::memory<T>::reserve(const gptr<gptr<T>>& ptr)
 {
 	return aget_sync(ptr);	// one RMA
 }

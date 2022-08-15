@@ -6,6 +6,10 @@
 /* Macros */
 #ifdef	MEM_HP
 	using namespace dds::hp;
+#elif defined	MEM_DANG2
+	using namespace dds::dang2;
+#else	// No Memory Reclamation
+	using namespace dds::nmr;
 #endif
 
 /* Benchmark-specific tuning parameters */
