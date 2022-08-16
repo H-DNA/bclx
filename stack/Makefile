@@ -1,5 +1,5 @@
 # The main file name of your program
-OUT = producer_consumer_trial
+OUT = producer_consumer
 
 # The number of units
 NUM_UNITS = 4

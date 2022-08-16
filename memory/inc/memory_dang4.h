@@ -6,7 +6,6 @@
 #include <algorithm>			// std::sort...
 #include <utility>			// std::move...
 #include <cmath>			// exp2l...
-//#include "../lib/list.h"		// sds::list_gptr...
 #include "../pool/inc/pool_ubd_spsc.h"	// dds::queue_ubd_spsc...
 
 namespace dds
@@ -15,7 +14,16 @@ namespace dds
 namespace dang4
 {
 
+/* Macros */
 using namespace bclx;
+
+/* Datatypes */
+template<typename T>
+struct list_seq3
+{
+	list_seq<T>	contig;
+	list_seq2	ncontig;
+};
 
 template<typename T>
 class memory
@@ -40,11 +48,11 @@ private:
         const uint64_t		HP_WINDOW	= HP_TOTAL * 2;
 	//const uint64_t		MSG_SIZE	= exp2l(13);
 
-	dds::list_seq<block<T>>         		pool_mem;	// allocate global memory
+	list_seq<block<T>>         			pool_mem;	// allocate global memory
 	gptr<block<T>>         				pool_rep;	// deallocate global memory
 	gptr<gptr<T>>					reservation;	// be a reser array of the calling unit
 	std::vector<gptr<T>>				list_ret;	// contain retired elems
-	dds::list_seq3<block<T>>			lheap;		// be per-unit heap
+	list_seq3<block<T>>				lheap;		// be per-unit heap
 	std::vector<std::vector<gptr<T>>>		buffers;	// be local buffers
 	std::vector<std::vector<dds::pool_ubd_spsc<T>>>	pools;		// be SPSC unbounded pools
 
@@ -107,22 +115,14 @@ dds::gptr<T> dds::dang4::memory<T>::malloc()
 			++elem_ru;
 		#endif
 
-		/* debugging *//*
-		printf("[%lu]CP1\n", BCL::rank());
-		/**/
-
-		gptr<header> ptr = lheap.ncontig.pop_front();
+		gptr<header> ptr = lheap.ncontig.pop();
 		return {ptr.rank, ptr.ptr + sizeof(header)};
 	}
 
 	// if contig is not empty, return a gptr<T> from it
 	if (!lheap.contig.empty())
 	{
-		/* debugging *//*
-		printf("[%lu]CP2\n", BCL::rank());
-		/**/
-	
-		gptr<block<T>> ptr = lheap.contig.pop_front();
+		gptr<block<T>> ptr = lheap.contig.pop();
 		return {ptr.rank, ptr.ptr + sizeof(header)};
 	}
 
@@ -142,31 +142,19 @@ dds::gptr<T> dds::dang4::memory<T>::malloc()
 			++elem_ru;
 		#endif
 
-		/* debugging *//*
-		printf("[%lu]CP3\n", BCL::rank());
-		/**/
-
-		gptr<header> ptr = lheap.ncontig.pop_front();
+		gptr<header> ptr = lheap.ncontig.pop();
 		return {ptr.rank, ptr.ptr + sizeof(header)};
 	}
 
 	// otherwise, get elems from the memory pool
 	if (!pool_mem.empty())
 	{
-		/* debugging *//*
-		printf("[%lu]CP4\n", BCL::rank());
-		/**/
-
-		gptr<block<T>> ptr = pool_mem.pop_front(HP_WINDOW);
+		gptr<block<T>> ptr = pool_mem.pop(HP_WINDOW);
         	lheap.contig.set(ptr, HP_WINDOW);
 
-                ptr = lheap.contig.pop_front();
+                ptr = lheap.contig.pop();
                 return {ptr.rank, ptr.ptr + sizeof(header)};
 	}
-
-	/* debugging */
-	printf("[%lu]CP5\n", BCL::rank());
-	/**/
 
 	// try to scan all pools to get relaimed elems one more
 	for (uint64_t i = 0; i < pools[BCL::rank()].size(); ++i)
@@ -184,7 +172,7 @@ dds::gptr<T> dds::dang4::memory<T>::malloc()
 			++elem_ru;
 		#endif
 
-                gptr<header> ptr = lheap.ncontig.pop_front();
+                gptr<header> ptr = lheap.ncontig.pop();
                 return {ptr.rank, ptr.ptr + sizeof(header)};
         }
 	
@@ -253,14 +241,7 @@ dds::gptr<T> dds::dang4::memory<T>::reserve(const gptr<gptr<T>>& ptr)
 {
 	gptr<T> val_old = bclx::aget_sync(ptr);	// one RMA
 	if (val_old == nullptr)
-	{
-		/* debugging *//*
-		if (BCL::rank() == 0)
-			printf("[%lu]CP1\n", BCL::rank());
-		/**/
-
 		return nullptr;
-	}
 	else // if (val_old != nullptr)
 	{
 		gptr<gptr<T>> temp = reservation;
@@ -278,28 +259,13 @@ dds::gptr<T> dds::dang4::memory<T>::reserve(const gptr<gptr<T>>& ptr)
 						return nullptr;
 					}
 					else if (val_new == val_old)
-					{
-						/* debugging *//*
-						if (BCL::rank() == 0)
-							printf("[%lu]reserve: <%u, %u>\n", BCL::rank(), val_old.rank, val_old.ptr);
-						/**/
-
 						return val_old;
-					}
 					else // if (val_new != val_old)
 						val_old = val_new;
 				}
 			}
 			else // if (bclx::aget_sync(temp) != NULL_PTR)
 				++temp;
-
-		/* debugging *//*
-		if (BCL::rank() == 0)
-		{
-			gptr<T> test = bclx::aget_sync(reservation);
-			printf("<%u, %u>\n", test.rank, test.ptr);
-		}
-		/**/
 
 		printf("[%lu]ERROR: memory.reserve\n", BCL::rank());
 		return nullptr;
@@ -310,35 +276,14 @@ template<typename T>
 void dds::dang4::memory<T>::unreserve(const gptr<T>& ptr)
 {
 	if (ptr == nullptr)
-	{
-		// debugging
-		if (BCL::rank() == 0)
-			printf("[%lu]CP11\n", BCL::rank());
-
 		return;
-	}
 	else // if (ptr != nullptr)
 	{
 		gptr<gptr<T>> temp = reservation;
 		for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
 			if (bclx::aget_sync(temp) == ptr)
 			{
-
-				/* debugging *//*
-				if (BCL::rank() == 0)
-					printf("[%lu]unreserve: <%u, %u>\n", BCL::rank(), ptr.rank, ptr.ptr);
-				/**/
-
 				bclx::aput_sync(NULL_PTR, temp);
-
-				/* debugging *//*
-				if (BCL::rank() == 0)
-				{
-					gptr<T> test = bclx::aget_sync(temp);
-					printf("[%lu]CP12: <%u, %u>\n", BCL::rank(), test.rank, test.ptr);
-				}
-				/**/
-
 				return;
 			}
 			else // if (bclx::aget_sync(temp) != ptr)

@@ -22,22 +22,6 @@ struct block
 	T	data;
 };
 
-template<typename T>
-class list_seq
-{
-public:
-	list_seq();
-	~list_seq();
-	bool empty() const;
-	void set(const gptr<T>& h, const uint64_t& s);
-	gptr<T> pop_front();
-	gptr<T> pop_front(const uint64_t& s);
-
-private:
-	gptr<T>		head;
-	uint64_t	size;
-};
-
 class list_seq2
 {
 public:
@@ -46,20 +30,13 @@ public:
 	bool empty() const;
 	void set(const gptr<header>& h, const gptr<header>& t);
 	void get(gptr<header>& h, gptr<header>& t) const;
-	gptr<header> pop_front();
+	gptr<header> pop();
 	void append(const list_seq2& slist);
 	void print() const;
 
 private:
 	gptr<header>	head;
 	gptr<header>	tail;
-};
-
-template<typename T>
-struct list_seq3
-{
-	list_seq<T>	contig;
-	list_seq2	ncontig;
 };
 
 template<typename T>
@@ -81,53 +58,6 @@ private:
 };
 
 } /* namespace dds */
-
-/* Implementation of list_seq */
-
-template<typename T>
-dds::list_seq<T>::list_seq() : head{nullptr}, size{0} {}
-
-template<typename T>
-dds::list_seq<T>::~list_seq() {}
-
-template<typename T>
-bool dds::list_seq<T>::empty() const
-{
-	return (size == 0);
-}
-
-template<typename T>
-void dds::list_seq<T>::set(const gptr<T>& h, const uint64_t& s)
-{
-	head = h;
-	size = s;
-}
-
-// Precondition: list_seq is not empty
-template<typename T>
-bclx::gptr<T> dds::list_seq<T>::pop_front()
-{
-	--size;
-	return head++;
-}
-
-// Precondition: list_seq is not empty
-template<typename T>
-bclx::gptr<T> dds::list_seq<T>::pop_front(const uint64_t& s)
-{
-	if (size < s)
-	{
-		printf("[%lu]ERROR: MEMORY RUNS OUT\n", BCL::rank());
-		return nullptr;
-	}
-
-	size -= s;
-	gptr<T> ptr = head;
-	head += s;
-	return ptr;
-}
-
-/**/
 
 /* Implementation of list_seq2 */
 
@@ -153,7 +83,7 @@ void dds::list_seq2::get(gptr<header>& h, gptr<header>& t) const
 }
 
 // Precondition: list_seq2 is not empty
-bclx::gptr<dds::header> dds::list_seq2::pop_front()
+bclx::gptr<dds::header> dds::list_seq2::pop()
 {
 	gptr<header> res = head;
 	head = bclx::load(head).next;

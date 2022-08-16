@@ -19,13 +19,13 @@
 
 //#include "memory_ibr.h"		// Using Interval-Based Reclamation (2GEIBR) [Wen et al., PPoPP'18]
 
-#include "memory_dang.h"	// Using Hazard Pointers + the TAKEN Field (My Rejected Journal)
+#include "memory_dang.h"	// Using Hazard Pointers + the TAKEN Field
 
-#include "memory_dang2.h"	// Using Hazard Pointers + SPSC Bounded Queues (push_rget)
+#include "memory_dang2.h"	// Using Hazard Pointers + SPSC Bounded Hosted Queues (push_rget)
 
-#include "memory_dang3.h"	// Using Hazard Pointers + SPSC Bounded Queues (push_load)
+#include "memory_dang3.h"	// Using Hazard Pointers + SPSC Bounded Hosted Queues (push_load)
 
-#include "memory_dang4.h"	// Using Hazard Pointers + SPSC Unbounded Hosted DSs (push_rget)
+#include "memory_dang4.h"	// Using Hazard Pointers + SPSC Unbounded Hosted Pools (push_rget)
 
 #include "memory_bl.h"		// Baseline: Using Hazard Pointers - Scanning
 

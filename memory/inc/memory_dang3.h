@@ -13,7 +13,16 @@ namespace dds
 namespace dang3
 {
 
+/* Macros */
 using namespace bclx;
+
+/* Datatypes */
+template<typename T>
+struct list_seq3
+{
+	list_seq<T>		contig;
+	std::vector<gptr<T>>	ncontig;
+};
 
 template<typename T>
 class memory
@@ -27,7 +36,7 @@ public:
 	void op_begin();				// indicate the beginning of a concurrent operation
 	void op_end();					// indicate the end of a concurrent operation
 	gptr<T> try_reserve(const gptr<gptr<T>>&,	// try to to protect a global pointer from reclamation
-				const gptr<T>&);
+			const gptr<T>&);
 	gptr<T> reserve(const gptr<gptr<T>>&);		// try to protect a global pointer from reclamation
 	void unreserve(const gptr<T>&);			// stop protecting a global pointer
 
@@ -37,13 +46,11 @@ private:
         const uint64_t		HP_TOTAL	= BCL::nprocs() * HPS_PER_UNIT;
         const uint64_t		HP_WINDOW	= HP_TOTAL * 2;
 
-	gptr<T>         					pool;		// allocate global memory
+	list_seq<T>						pool_mem;	// allocate global memory
 	gptr<T>         					pool_rep;	// deallocate global memory
-	uint64_t						capacity;	// contain global memory capacity (bytes)
 	gptr<gptr<T>>						reservation;	// be a reservation array of the calling unit
 	std::vector<gptr<T>>					list_ret;	// contain retired elems
-	std::vector<gptr<T>>					list_rec;	// contain reclaimed elems
-	uint64_t						counter;	// be a counter
+	list_seq3<T>						lheap;		// be per-unit heap
 	std::vector<std::vector<gptr<T>>>			buffers;	// be local buffers
 	std::vector<std::vector<dds::queue_spsc<gptr<T>>>>	queues;		// be SPSC queues
 
@@ -67,8 +74,8 @@ dds::dang3::memory<T>::memory()
 		++temp;
 	}
 
-	pool = pool_rep = BCL::alloc<T>(TOTAL_OPS);
-        capacity = pool.ptr + TOTAL_OPS * sizeof(T);
+	pool_rep = BCL::alloc<T>(TOTAL_OPS);
+        pool_mem.set(pool_rep, TOTAL_OPS);
 
 	for (uint64_t i = 0; i < BCL::nprocs(); ++i)
 	{
@@ -77,13 +84,10 @@ dds::dang3::memory<T>::memory()
 			queues[i].push_back(dds::queue_spsc<gptr<T>>(i, TOTAL_OPS / BCL::nprocs()));
 	}
 
-	counter = 0;
-	list_ret.reserve(HP_WINDOW);
 	for (uint64_t i = 0; i < BCL::nprocs(); ++i)
 	{
 		buffers.push_back(std::vector<gptr<T>>());
-		if (i != BCL::rank())
-			buffers[i].reserve(HP_WINDOW);
+		buffers[i].reserve(HP_WINDOW);
 	}
 }
 
@@ -101,54 +105,76 @@ dds::dang3::memory<T>::~memory()
 template<typename T>
 bclx::gptr<T> dds::dang3::memory<T>::malloc()
 {
-	++counter;
-	if (counter % HP_WINDOW == 0)
-		for (uint64_t i = 0; i < queues[BCL::rank()].size(); ++i)
-		{
-			std::vector<gptr<T>> temp;
-			if (queues[BCL::rank()][i].dequeue(temp))
-				list_rec.insert(list_rec.end(), temp.begin(), temp.end());
-		}
-
-        // determine the global address of the new element
-        if (!list_rec.empty())
+	// if ncontig is not empty, return a gptr<T> from it
+	if (!lheap.ncontig.empty())
 	{
 		// tracing
 		#ifdef	TRACING
 			++elem_ru;
 		#endif
 
-		gptr<T> addr = list_rec.back();
-		list_rec.pop_back();
-                return addr;
+		gptr<T> ptr = lheap.ncontig.back();
+		lheap.ncontig.pop_back();
+		return ptr;
 	}
-        else // the list of reclaimed global memory is empty
-        {
-                if (pool.ptr < capacity)
-                        return pool++;
-                else // if (pool.ptr == capacity)
-		{
-			// try one more to reclaim global memory
-			for (uint64_t i = 0; i < queues[BCL::rank()].size(); ++i)
-			{
-				std::vector<gptr<T>> temp;
-                        	if (queues[BCL::rank()][i].dequeue(temp))
-                                	list_rec.insert(list_rec.end(), temp.begin(), temp.end());
-                       	}
 
-			if (!list_rec.empty())
-			{
-				// tracing
-				#ifdef  TRACING
-					++elem_ru;
-				#endif
+	// if contig is not empty, return a gptr<T> from it
+	if (!lheap.contig.empty())
+		return lheap.contig.pop();
 
-				gptr<T> addr = list_rec.back();
-				list_rec.pop_back();
-				return addr;
-			}
-		}
+	// otherwise, scan all queues to get reclaimed elems if any
+	for (uint64_t i = 0; i < queues[BCL::rank()].size(); ++i)
+	{
+		std::vector<gptr<T>> slist;
+		if (queues[BCL::rank()][i].dequeue(slist))
+			lheap.ncontig.insert(lheap.ncontig.end(), slist.begin(), slist.end());
+	}
+	
+	// if ncontig is not empty, return a gptr<T> from it
+	if (!lheap.ncontig.empty())
+	{
+		// tracing
+		#ifdef	TRACING
+			++elem_ru;
+		#endif
+
+		gptr<T> ptr = lheap.ncontig.back();
+		lheap.ncontig.pop_back();
+		return ptr;
+	}
+
+	// otherwise, get elems from the memory pool
+	if (!pool_mem.empty())
+	{
+		gptr<T> ptr = pool_mem.pop(HP_WINDOW);
+        	lheap.contig.set(ptr, HP_WINDOW);
+
+                return lheap.contig.pop();
+	}
+
+	// try to scan all pools to get relaimed elems one more
+	for (uint64_t i = 0; i < queues[BCL::rank()].size(); ++i)
+	{
+		std::vector<gptr<T>> slist;
+		if (queues[BCL::rank()][i].dequeue(slist))
+			lheap.ncontig.insert(lheap.ncontig.end(), slist.begin(), slist.end());
         }
+
+        // if ncontig is not empty, return a gptr<T> from it
+        if (!lheap.ncontig.empty())
+        {
+		// tracing
+		#ifdef	TRACING
+			++elem_ru;
+		#endif
+
+		gptr<T> ptr = lheap.ncontig.back();
+		lheap.ncontig.pop_back();
+                return ptr;
+        }
+	
+	// otherwise, return nullptr
+	printf("[%lu]ERROR: memory.malloc\n", BCL::rank());
 	return nullptr;
 }
 
@@ -156,7 +182,7 @@ template<typename T>
 void dds::dang3::memory<T>::free(const gptr<T>& ptr)
 {
 	buffers[ptr.rank].push_back(ptr);
-	if (buffers[ptr.rank].size() == HP_WINDOW)
+	if (buffers[ptr.rank].size() >= HP_WINDOW)
 		queues[ptr.rank][BCL::rank()].enqueue(std::move(buffers[ptr.rank]));
 }
 
@@ -199,7 +225,7 @@ bclx::gptr<T> dds::dang3::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, const
 			}
 			else // if (bclx::aget_sync(temp) != NULL_PTR)
 				++temp;
-		printf("HP:Error\n");
+		printf("[%lu]ERROR: memory.try_reserve\n", BCL::rank());
 		return nullptr;
 	}
 }
@@ -234,7 +260,7 @@ bclx::gptr<T> dds::dang3::memory<T>::reserve(const gptr<gptr<T>>& ptr)
 			}
 			else // if (bclx::aget_sync(temp) != NULL_PTR)
 				++temp;
-		printf("HP:Error\n");
+		printf("[%lu]ERROR: memory.reserve\n", BCL::rank());
 		return nullptr;
 	}
 }
@@ -255,7 +281,7 @@ void dds::dang3::memory<T>::unreserve(const gptr<T>& ptr)
 			}
 			else // if (bclx::aget_sync(temp) != ptr)
 				++temp;
-		printf("HP:Error\n");
+		printf("[%lu]ERROR: memory.unreserve\n", BCL::rank());
 		return;
 	}
 }
