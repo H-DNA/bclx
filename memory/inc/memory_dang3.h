@@ -183,7 +183,10 @@ void dds::dang3::memory<T>::free(const gptr<T>& ptr)
 {
 	buffers[ptr.rank].push_back(ptr);
 	if (buffers[ptr.rank].size() >= HP_WINDOW)
+	{
 		queues[ptr.rank][BCL::rank()].enqueue(std::move(buffers[ptr.rank]));
+		buffers[ptr.rank].clear();
+	}
 }
 
 template<typename T>

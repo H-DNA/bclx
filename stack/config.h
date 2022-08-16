@@ -9,7 +9,7 @@ namespace dds
 
 	/* Configurations */
 	#define	TRACING
-	#define	MEM_DANG4
+	#define	MEM_DANG2
 	//#define	DEBUGGING
 
 	const uint64_t	TOTAL_OPS	=	exp2l(15);

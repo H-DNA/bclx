@@ -38,7 +38,7 @@ namespace ts
 	using namespace nmr;
 #endif
 
-/* Data types */
+/* Datatypes */
 template<typename T>
 struct elem
 {

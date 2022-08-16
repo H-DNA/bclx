@@ -49,10 +49,7 @@ dds::queue_spsc<T>::queue_spsc(const uint64_t&	host,
 }
 
 template<typename T>
-dds::queue_spsc<T>::~queue_spsc()
-{
-	/* No-op */
-}
+dds::queue_spsc<T>::~queue_spsc() {}
 
 template<typename T>
 void dds::queue_spsc<T>::clear()
