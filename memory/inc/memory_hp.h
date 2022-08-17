@@ -118,11 +118,6 @@ bclx::gptr<T> dds::hp::memory<T>::malloc()
 template<typename T>
 void dds::hp::memory<T>::free(const gptr<T>& ptr)
 {
-	// tracing
-	#ifdef	TRACING
-		++elem_rc;
-	#endif
-
 	list_rec.push_back(ptr);
 }
 
@@ -135,16 +130,10 @@ void dds::hp::memory<T>::retire(const gptr<T>& ptr)
 }
 
 template<typename T>
-void dds::hp::memory<T>::op_begin()
-{
-	/* No-op */
-}
+void dds::hp::memory<T>::op_begin() {}
 
 template<typename T>
-void dds::hp::memory<T>::op_end()
-{
-	/* No-op */
-}
+void dds::hp::memory<T>::op_end() {}
 
 template<typename T>
 bool dds::hp::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, const gptr<T>& val_old)

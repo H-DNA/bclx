@@ -77,6 +77,11 @@ dds::dang4::memory<T>::memory()
 	}
 
 	pool_rep = BCL::alloc<block<T>>(TOTAL_OPS);
+	if (pool_rep == nullptr)
+	{
+		printf("[%lu]ERROR: memory.memory\n", BCL::rank());
+		return;
+	}
 	pool_mem.set(pool_rep, TOTAL_OPS);
 
 	for (uint64_t i = 0; i < BCL::nprocs(); ++i)
@@ -87,10 +92,7 @@ dds::dang4::memory<T>::memory()
 	}
 
 	for (uint64_t i = 0; i < BCL::nprocs(); ++i)
-	{
 		buffers.push_back(std::vector<gptr<T>>());
-		buffers[i].reserve(HP_WINDOW);
-	}
 }
 
 template<typename T>
@@ -107,7 +109,20 @@ dds::dang4::memory<T>::~memory()
 template<typename T>
 dds::gptr<T> dds::dang4::memory<T>::malloc()
 {
-	// if ncontig is not empty, return a gptr<T> from it
+	// if buffers[BCL::rank()] is not empty, return a gptr<T> from it
+	if (!buffers[BCL::rank()].empty())
+	{
+		// tracing
+		#ifdef	TRACING
+			++elem_ru;
+		#endif
+
+		gptr<T> ptr = buffers[BCL::rank()].back();
+		buffers[BCL::rank()].pop_back();
+		return ptr;
+	}
+
+	// if lheap.ncontig is not empty, return a gptr<T> from it
 	if (!lheap.ncontig.empty())
 	{
 		// tracing
@@ -119,7 +134,7 @@ dds::gptr<T> dds::dang4::memory<T>::malloc()
 		return {ptr.rank, ptr.ptr + sizeof(header)};
 	}
 
-	// if contig is not empty, return a gptr<T> from it
+	// if lheap.contig is not empty, return a gptr<T> from it
 	if (!lheap.contig.empty())
 	{
 		gptr<block<T>> ptr = lheap.contig.pop();
@@ -130,11 +145,11 @@ dds::gptr<T> dds::dang4::memory<T>::malloc()
 	for (uint64_t i = 0; i < pools[BCL::rank()].size(); ++i)
 	{
 		list_seq2 slist;
-		if (pools[BCL::rank()][i].get(slist))
+		if (pools[BCL::rank()][i].get(slist))			
 			lheap.ncontig.append(slist);
 	}
 	
-	// if ncontig is not empty, return a gptr<T> from it
+	// if lheap.ncontig is not empty, return a gptr<T> from it
 	if (!lheap.ncontig.empty())
 	{
 		// tracing
@@ -164,7 +179,7 @@ dds::gptr<T> dds::dang4::memory<T>::malloc()
 			lheap.ncontig.append(slist);
         }
 
-        // if ncontig is not empty, return a gptr<T> from it
+        // if lheap.ncontig is not empty, return a gptr<T> from it
         if (!lheap.ncontig.empty())
         {
 		// tracing
@@ -185,7 +200,7 @@ template<typename T>
 void dds::dang4::memory<T>::free(const gptr<T>& ptr)
 {
 	buffers[ptr.rank].push_back(ptr);
-	if (buffers[ptr.rank].size() >= HP_WINDOW)
+	if (ptr.rank != BCL::rank() && buffers[ptr.rank].size() >= HP_WINDOW)
 	{
 		pools[ptr.rank][BCL::rank()].put(buffers[ptr.rank]);
 		buffers[ptr.rank].clear();
@@ -201,16 +216,10 @@ void dds::dang4::memory<T>::retire(const gptr<T>& ptr)
 }
 
 template<typename T>
-void dds::dang4::memory<T>::op_begin()
-{
-	/* No-op */
-}
+void dds::dang4::memory<T>::op_begin() {}
 
 template<typename T>
-void dds::dang4::memory<T>::op_end()
-{
-	/* No-op */
-}
+void dds::dang4::memory<T>::op_end() {}
 
 template<typename T>
 dds::gptr<T> dds::dang4::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, const gptr<T>& val_old)

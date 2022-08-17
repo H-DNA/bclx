@@ -9,20 +9,14 @@ namespace dds
 {
 
 	/* Macros */
-	//#define	TRACING
-	#define		MEM_DANG2
+	#define		MEM_HP
 
         /* Constants */
 	const uint64_t	MASTER_UNIT	= 0;
-	const uint64_t	TOTAL_OPS	= exp2l(25);
+	const uint64_t	TOTAL_OPS	= exp2l(23);
 
 	/* Varriables */
-	//std::string	stack_name;
 	std::string	mem_manager;
-	//uint64_t	bk_init		=	exp2l(1);	//us
-	//uint64_t	bk_max		=	exp2l(20);	//us
-	//uint64_t	bk_init_master	=	exp2l(1);	//us
-	//uint64_t	bk_max_master	=	exp2l(20);	//us
 	
 	// tracing
 	/*#ifdef  TRACING
