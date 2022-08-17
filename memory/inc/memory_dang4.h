@@ -84,6 +84,8 @@ dds::dang4::memory<T>::memory()
 	}
 	pool_mem.set(pool_rep, TOTAL_OPS);
 
+	list_ret.reserve(HP_WINDOW);
+
 	for (uint64_t i = 0; i < BCL::nprocs(); ++i)
 	{
 		pools.push_back(std::vector<dds::pool_ubd_spsc<T>>());
@@ -107,7 +109,7 @@ dds::dang4::memory<T>::~memory()
 }
 
 template<typename T>
-dds::gptr<T> dds::dang4::memory<T>::malloc()
+bclx::gptr<T> dds::dang4::memory<T>::malloc()
 {
 	// if buffers[BCL::rank()] is not empty, return a gptr<T> from it
 	if (!buffers[BCL::rank()].empty())
@@ -222,7 +224,7 @@ template<typename T>
 void dds::dang4::memory<T>::op_end() {}
 
 template<typename T>
-dds::gptr<T> dds::dang4::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, const gptr<T>& val_old)
+bclx::gptr<T> dds::dang4::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, const gptr<T>& val_old)
 {
 	if (val_old == nullptr)
 		return nullptr;
@@ -246,7 +248,7 @@ dds::gptr<T> dds::dang4::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, const 
 }
 
 template<typename T>
-dds::gptr<T> dds::dang4::memory<T>::reserve(const gptr<gptr<T>>& ptr)
+bclx::gptr<T> dds::dang4::memory<T>::reserve(const gptr<gptr<T>>& ptr)
 {
 	gptr<T> val_old = bclx::aget_sync(ptr);	// one RMA
 	if (val_old == nullptr)

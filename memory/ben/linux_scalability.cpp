@@ -4,8 +4,16 @@
 #include "../inc/memory.h"	// dds::memory...
 
 /* Macros */
-#ifdef	MEM_HP
+#ifdef		MEM_HP
 	using namespace dds::hp;
+#elif defined 	MEM_DANG2
+	using namespace dds::dang2;
+#elif defined	MEM_DANG3
+	using namespace dds::dang3;
+#elif defined	MEM_DANG4
+	using namespace dds::dang4;
+#else		// No Memory Reclamation
+	using namespace dds::nmr;
 #endif
 
 /* Benchmark-specific tuning parameters */

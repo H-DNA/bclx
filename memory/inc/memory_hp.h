@@ -12,7 +12,16 @@ namespace dds
 namespace hp
 {
 
+/* Macros */
 using namespace bclx;
+
+/* Datatypes */
+template<typename T>
+struct list_seq2
+{
+        list_seq<T>		contig;
+	std::vector<gptr<T>>	ncontig;
+};
 
 template<typename T>
 class memory
@@ -36,12 +45,11 @@ private:
         const uint64_t		HP_TOTAL	= BCL::nprocs() * HPS_PER_UNIT;
         const uint64_t		HP_WINDOW	= HP_TOTAL * 2;
 
-	gptr<T>         	pool;		// allocate global memory
+	list_seq<T>         	pool_mem;	// allocate global memory
 	gptr<T>         	pool_rep;	// deallocate global memory
-	uint64_t		capacity;	// contain global memory capacity (bytes)
 	gptr<gptr<T>>		reservation;	// be an array of hazard pointers of the calling unit
 	std::vector<gptr<T>>	list_ret;	// contain retired elems
-	std::vector<gptr<T>>	list_rec;	// contain reclaimed elems
+	list_seq2<T>		lheap;		// be per-unit heap
 
 	void empty();
 };
@@ -59,12 +67,17 @@ dds::hp::memory<T>::memory()
         gptr<gptr<T>> temp = reservation = BCL::alloc<gptr<T>>(HPS_PER_UNIT);
 	for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
 	{
-		store(NULL_PTR, temp);
+		bclx::store(NULL_PTR, temp);
 		++temp;
 	}
 
-	pool = pool_rep = BCL::alloc<T>(TOTAL_OPS);
-        capacity = pool.ptr + TOTAL_OPS * sizeof(T);
+	pool_rep = BCL::alloc<T>(TOTAL_OPS);
+        if (pool_rep == nullptr)
+	{
+		printf("[%lu]ERROR: memory.memory\n", BCL::rank());
+		return;
+	}
+	pool_mem.set(pool_rep, TOTAL_OPS);
 
 	list_ret.reserve(HP_WINDOW);
 }
@@ -79,46 +92,57 @@ dds::hp::memory<T>::~memory()
 template<typename T>
 bclx::gptr<T> dds::hp::memory<T>::malloc()
 {
-        // determine the global address of the new element
-        if (!list_rec.empty())
+	// if lheap.ncontig is not empty, return a gptr<T> from it
+	if (!lheap.ncontig.empty())
 	{
 		// tracing
-		#ifdef	TRACING
+		#ifdef  TRACING
 			++elem_ru;
 		#endif
 
-		gptr<T> addr = list_rec.back();
-		list_rec.pop_back();
-                return addr;
+		gptr<T> ptr = lheap.ncontig.back();
+		lheap.ncontig.pop_back();
+		return ptr;
 	}
-        else // the list of reclaimed global memory is empty
-        {
-                if (pool.ptr < capacity)
-                        return pool++;
-                else // if (pool.ptr == capacity)
-		{
-			// try one more to reclaim global memory
-			empty();
-			if (!list_rec.empty())
-			{
-				// tracing
-				#ifdef  TRACING
-					++elem_ru;
-				#endif
 
-				gptr<T> addr = list_rec.back();
-				list_rec.pop_back();
-				return addr;
-			}
-		}
-        }
+	// if lheap.contig is not empty, return a gptr<T> from it
+	if (!lheap.contig.empty())
+		return lheap.contig.pop();
+
+	// otherwise, get elems from the memory pool
+	if (!pool_mem.empty())
+	{
+		gptr<T> ptr = pool_mem.pop(HP_WINDOW);
+		lheap.contig.set(ptr, HP_WINDOW);
+
+		return lheap.contig.pop();
+	}
+
+	// try to reclaim global memory one more
+	empty();
+
+	// if lheap.ncontig is not empty, return a gptr<T> from it
+	if (!lheap.ncontig.empty())
+	{
+		// tracing
+		#ifdef  TRACING
+			++elem_ru;
+		#endif
+
+		gptr<T> ptr = lheap.ncontig.back();
+		lheap.ncontig.pop_back();
+		return ptr;
+	}
+
+	// otherwise, return nullptr
+	printf("[%lu]ERROR: memory.malloc\n", BCL::rank());
 	return nullptr;
 }
 
 template<typename T>
 void dds::hp::memory<T>::free(const gptr<T>& ptr)
 {
-	list_rec.push_back(ptr);
+	lheap.ncontig.push_back(ptr);
 }
 
 template<typename T>
@@ -144,20 +168,20 @@ bool dds::hp::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, const gptr<T>& va
 	{
 		gptr<gptr<T>> temp = reservation;
 		for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
-			if (aget_sync(temp) == NULL_PTR)
+			if (bclx::aget_sync(temp) == NULL_PTR)
 			{
-				aput_sync(val_old, temp);
-				gptr<T> val_new = aget_sync(ptr);	// one RMA
+				bclx::aput_sync(val_old, temp);
+				gptr<T> val_new = bclx::aget_sync(ptr);	// one RMA
 				if (val_new == NULL_PTR || val_new != val_old)
 				{
-					aput_sync(NULL_PTR, temp);
+					bclx::aput_sync(NULL_PTR, temp);
 					return false;
 				}
 				return true;
 			}
-			else // if (aget_sync(temp) != NULL_PTR)
+			else // if (bclx::aget_sync(temp) != NULL_PTR)
 				++temp;
-		printf("HP:Error\n");
+		printf("[%lu]ERROR: memory.try_reserve\n", BCL::rank());
 		return false;
 	}
 }
@@ -165,23 +189,23 @@ bool dds::hp::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, const gptr<T>& va
 template<typename T>
 bclx::gptr<T> dds::hp::memory<T>::reserve(const gptr<gptr<T>>& ptr)
 {
-	gptr<T> val_old = aget_sync(ptr);	// one RMA
+	gptr<T> val_old = bclx::aget_sync(ptr);	// one RMA
 	if (val_old == NULL_PTR)
 		return nullptr;
 	else // if (val_old != NULL_PTR)
 	{
 		gptr<gptr<T>> temp = reservation;
 		for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
-			if (aget_sync(temp) == NULL_PTR)
+			if (bclx::aget_sync(temp) == NULL_PTR)
 			{
 				gptr<T> val_new;
 				while (true)
 				{
-					aput_sync(val_old, temp);
-					val_new = aget_sync(ptr);	// one RMA
+					bclx::aput_sync(val_old, temp);
+					val_new = bclx::aget_sync(ptr);	// one RMA
 					if (val_new == NULL_PTR)
 					{
-						aput_sync(NULL_PTR, temp);
+						bclx::aput_sync(NULL_PTR, temp);
 						return nullptr;
 					}
 					else if (val_new == val_old)
@@ -192,7 +216,7 @@ bclx::gptr<T> dds::hp::memory<T>::reserve(const gptr<gptr<T>>& ptr)
 			}
 			else // if (bclx::aget_sync(temp) != NULL_PTR)
 				++temp;
-		printf("HP:Error\n");
+		printf("[%lu]ERROR: memory.reserve\n", BCL::rank());
 		return nullptr;
 	}
 }
@@ -206,14 +230,14 @@ void dds::hp::memory<T>::unreserve(const gptr<T>& ptr)
 	{
 		gptr<gptr<T>> temp = reservation;
 		for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
-			if (aget_sync(temp) == ptr)
+			if (bclx::aget_sync(temp) == ptr)
 			{
-				aput_sync(NULL_PTR, temp);
+				bclx::aput_sync(NULL_PTR, temp);
 				return;
 			}
-			else // if (aget_sync(temp) != ptr)
+			else // if (bclx::aget_sync(temp) != ptr)
 				++temp;
-		printf("HP:Error\n");
+		printf("[%lu]ERROR: memory.unreserve\n", BCL::rank());
 		return;
 	}
 }
@@ -224,7 +248,7 @@ void dds::hp::memory<T>::empty()
 	std::vector<gptr<T>>	plist;		// contain non-null hazard pointers
 	std::vector<gptr<T>>	new_dlist;	// be dlist after finishing the Scan function
 	gptr<gptr<T>> 		hp_temp;	// a temporary variable
-	gptr<T>			addr;		// a temporary variable
+	gptr<T>			ptr;		// a temporary variable
 
 	plist.reserve(HP_TOTAL);
 	new_dlist.reserve(HP_TOTAL);
@@ -236,9 +260,9 @@ void dds::hp::memory<T>::empty()
 		hp_temp.rank = i;
 		for (uint32_t j = 0; j < HPS_PER_UNIT; ++j)
 		{
-			addr = aget_sync(hp_temp);
-			if (addr != NULL_PTR)
-				plist.push_back(addr);
+			ptr = bclx::aget_sync(hp_temp);
+			if (ptr != NULL_PTR)
+				plist.push_back(ptr);
 			++hp_temp;
 		}
 	}
@@ -250,10 +274,10 @@ void dds::hp::memory<T>::empty()
 	// Stage 3
         while (!list_ret.empty())
 	{
-		addr = list_ret.back();
+		ptr = list_ret.back();
 		list_ret.pop_back();
-		if (std::binary_search(plist.begin(), plist.end(), addr))
-			new_dlist.push_back(addr);
+		if (std::binary_search(plist.begin(), plist.end(), ptr))
+			new_dlist.push_back(ptr);
 		else
 		{
 			// tracing
@@ -261,7 +285,7 @@ void dds::hp::memory<T>::empty()
 				++elem_rc;
 			#endif
 
-			list_rec.push_back(addr);
+			free(ptr);
 		}
 	}
 

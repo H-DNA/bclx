@@ -12,7 +12,7 @@
 	using namespace dds::dang3;
 #elif defined	MEM_DANG4
 	using namespace dds::dang4;
-#else	// No Memory Reclamation
+#else		// No Memory Reclamation
 	using namespace dds::nmr;
 #endif
 

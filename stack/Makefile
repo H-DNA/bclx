@@ -1,5 +1,5 @@
 # The main file name of your program
-OUT = producer_consumer
+OUT = sequential_alternating
 
 # The number of units
 NUM_UNITS = 4
