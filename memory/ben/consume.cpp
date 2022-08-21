@@ -7,7 +7,11 @@
 	using namespace dds::hp;
 #elif defined	MEM_DANG2
 	using namespace dds::dang2;
-#else	// No Memory Reclamation
+#elif defined	MEM_DANG3
+	using namespace dds::dang3;
+#elif defined	MEM_DANG4
+	using namespace dds::dang4;
+#else		// No Memory Reclamation
 	using namespace dds::nmr;
 #endif
 
@@ -37,37 +41,39 @@ int main()
 
 	for (uint64_t i = 0; i < NUM_ITERS; ++i)
 	{
-		barrier_sync();	// synchronize
+		bclx::barrier_sync();	// synchronize
 		tim.start();	// start the timer
-		if (BCL::rank() == dds::MASTER_UNIT)
-			for (uint64_t j = 0; j < BCL::nprocs(); ++j)
-				ptr[j] = mem.malloc();
+		for (uint64_t j = 0; j < BCL::nprocs(); ++j)
+			ptr[j] = mem.malloc();
 		tim.stop();	// stop the timer
 
-		ptr[BCL::rank()] = scatter(ptr, dds::MASTER_UNIT);
+		/* exchange the global pointers */
+		bclx::alltoall(ptr, ptr);
 
-		barrier_sync();	// synchronize
+		bclx::barrier_sync();	// synchronize
 		tim.start();	// start the timer
-		mem.free(ptr[BCL::rank()]);
+		for (uint64_t j = 0; j < BCL::nprocs(); ++j)
+			mem.free(ptr[BCL::rank()]);
 		tim.stop();	// stop the timer
 	}
 
 	double elapsed_time = tim.get();	// get the elapsed time
-	barrier_sync();	// synchronize
+	bclx::barrier_sync();	// synchronize
 
-	double total_time = reduce(elapsed_time, dds::MASTER_UNIT, BCL::max<double>{});
+	double total_time = bclx::reduce(elapsed_time, dds::MASTER_UNIT, BCL::max<double>{});
 	if (BCL::rank() == dds::MASTER_UNIT)
 	{
-		printf("*********************************************************\n");
-		printf("*\tBENCHMARK\t:\tConsume\t\t\t*\n");
-		printf("*\tNUM_UNITS\t:\t%lu\t\t\t*\n", BCL::nprocs());
-		printf("*\tNUM_OPS\t\t:\t%lu (total) \t\t*\n", 2 * NUM_ITERS * BCL::nprocs());
-		printf("*\tNUM_ITERS\t:\t%lu\t\t\t*\n", NUM_ITERS);
-		printf("*\tBLOCK_SIZE\t:\t%lu (bytes) \t\t*\n", sizeof(block));
-		printf("*\tMEM_MANAGER\t:\t%s\t\t\t*\n", dds::mem_manager.c_str());
-                printf("*\tEXEC_TIME\t:\t%f (s)\t\t*\n", total_time);
-		printf("*\tTHROUGHPUT\t:\t%f (ops/s)\t*\n", 2 * NUM_ITERS * BCL::nprocs() / total_time);
-		printf("*********************************************************\n");
+		uint64_t num_ops_per_unit = BCL::nprocs() * 2 * NUM_ITERS;
+		printf("*****************************************************************\n");
+		printf("*\tBENCHMARK\t:\tConsume\t\t\t\t*\n");
+		printf("*\tNUM_UNITS\t:\t%lu\t\t\t\t*\n", BCL::nprocs());
+		printf("*\tNUM_OPS\t\t:\t%lu (ops/unit) \t\t*\n", num_ops_per_unit);
+		printf("*\tNUM_ITERS\t:\t%lu\t\t\t\t*\n", NUM_ITERS);
+		printf("*\tBLOCK_SIZE\t:\t%lu (bytes) \t\t\t*\n", sizeof(block));
+		printf("*\tMEM_MANAGER\t:\t%s\t\t\t\t*\n", dds::mem_manager.c_str());
+                printf("*\tEXEC_TIME\t:\t%f (s)\t\t\t*\n", total_time);
+		printf("*\tTHROUGHPUT\t:\t%f (ops/s)\t*\n", BCL::nprocs() * num_ops_per_unit / total_time);
+		printf("*****************************************************************\n");
 	}
 
 	BCL::finalize();	// finalize the PGAS runtime

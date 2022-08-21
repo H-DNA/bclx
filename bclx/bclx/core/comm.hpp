@@ -157,6 +157,12 @@ inline T scatter(const T *src_buf, const size_t &src_rank)
 	return rv;
 }
 
+template<typename T>
+inline void alltoall(const T *src_buf, T *dst_buf)
+{
+	alltoall(src_buf, dst_buf, 1);
+}
+
 template<typename T, typename U>
 inline T reduce(const T &src_buf, const size_t &dst_rank, const BCL::atomic_op<U> &op)
 {

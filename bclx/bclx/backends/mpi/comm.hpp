@@ -150,6 +150,13 @@ inline void scatter(const T *src_buf, T *dst_buf, const size_t &src_rank, const 
 			dst_buf, size * sizeof(T), MPI_CHAR, src_rank, BCL::comm);
 }
 
+template<typename T>
+inline void alltoall(const T *src_buf, T *dst_buf, const size_t &size)
+{
+	MPI_Alltoall(src_buf, size * sizeof(T), MPI_CHAR,
+			dst_buf, size * sizeof(T), MPI_CHAR, BCL::comm);
+}
+
 template<typename T, typename U>
 inline void reduce(const T *src_buf, T *dst_buf, const size_t &dst_rank, const BCL::atomic_op<U> &op, const size_t &size)
 {

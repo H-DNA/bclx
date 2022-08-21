@@ -42,7 +42,7 @@ int main()
 	timer		tim;
 	memory<block>	mem;
 
-	barrier_sync();	// synchronize
+	bclx::barrier_sync();	// synchronize
 	tim.start();	// start the timer
 	for (uint64_t i = 0; i < NUM_ITERS; ++i)
 	{
@@ -53,13 +53,13 @@ int main()
 	}
 	tim.stop();	// stop the timer
 	double elapsed_time = tim.get();	// calculate the elapsed time
-	barrier_sync();	// synchronize
+	bclx::barrier_sync();	// synchronize
 
-	double total_time = reduce(elapsed_time, dds::MASTER_UNIT, BCL::max<double>{});
+	double total_time = bclx::reduce(elapsed_time, dds::MASTER_UNIT, BCL::max<double>{});
 	if (BCL::rank() == dds::MASTER_UNIT)
 	{
 		printf("*****************************************************************\n");
-		printf("*\tBENCHMARK\t:\tthreadtest\t\t\t*\n");
+		printf("*\tBENCHMARK\t:\tThreadtest\t\t\t*\n");
 		printf("*\tNUM_UNITS\t:\t%lu\t\t\t\t*\n", BCL::nprocs());
 		printf("*\tNUM_OPS\t\t:\t%lu (ops/unit)\t\t*\n", 2 * NUM_ITERS * NUM_OPS_PER_UNIT);
 		printf("*\tNUM_ITERS\t:\t%lu\t\t\t\t*\n", NUM_ITERS);
