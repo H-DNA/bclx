@@ -33,9 +33,9 @@ public:
 private:
 	const uint64_t	WINDOW = 2 * BCL::nprocs();
 
-	list_seq<T>	pool_mem;		// allocate PGAS
-	gptr<T>		pool_rep;		// deallocate PGAS
-	list_seq<T>	lheap;
+	list_seq<T>	pool_mem;		// allocate global memory
+	gptr<T>		pool_rep;		// deallocate global memory
+	list_seq<T>	lheap;			// be per-unit heap
 };
 
 } /* namespace nmr */

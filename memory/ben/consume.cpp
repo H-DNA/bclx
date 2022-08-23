@@ -35,7 +35,8 @@ int main()
 {		
 	BCL::init();	// initialize the PGAS runtime
 
-	gptr<block>	ptr[BCL::nprocs()];
+	gptr<block>	ptr_malloc[BCL::nprocs()],
+			ptr_free[BCL::nprocs()];
 	timer		tim;
 	memory<block>	mem;
 
@@ -44,16 +45,16 @@ int main()
 		bclx::barrier_sync();	// synchronize
 		tim.start();	// start the timer
 		for (uint64_t j = 0; j < BCL::nprocs(); ++j)
-			ptr[j] = mem.malloc();
+			ptr_malloc[j] = mem.malloc();
 		tim.stop();	// stop the timer
 
 		/* exchange the global pointers */
-		bclx::alltoall(ptr, ptr);
+		bclx::alltoall(ptr_malloc, ptr_free);
 
 		bclx::barrier_sync();	// synchronize
 		tim.start();	// start the timer
 		for (uint64_t j = 0; j < BCL::nprocs(); ++j)
-			mem.free(ptr[BCL::rank()]);
+			mem.free(ptr_free[BCL::rank()]);
 		tim.stop();	// stop the timer
 	}
 
