@@ -151,10 +151,10 @@ inline void scatter(const T *src_buf, T *dst_buf, const size_t &src_rank, const 
 }
 
 template<typename T>
-inline void alltoall(const T *src_buf, T *dst_buf, const size_t &size)
+inline void alltoall(const T *src_buf, T *dst_buf, const size_t &size, const MPI_Comm &comm)
 {
 	MPI_Alltoall(src_buf, size * sizeof(T), MPI_CHAR,
-			dst_buf, size * sizeof(T), MPI_CHAR, BCL::comm);
+			dst_buf, size * sizeof(T), MPI_CHAR, comm);
 }
 
 template<typename T, typename U>

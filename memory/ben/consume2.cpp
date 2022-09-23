@@ -37,32 +37,58 @@ int main()
 
 	gptr<block>	ptr_malloc[BCL::nprocs()],
 			ptr_free[BCL::nprocs()];
+	bclx::topology	topo;
 	timer		tim;
 	memory<block>	mem;
 
-	for (uint64_t i = 0; i < NUM_ITERS; ++i)
-	{
-		bclx::barrier_sync();	// synchronize
-		tim.start();	// start the timer
-		for (uint64_t j = 0; j < BCL::nprocs(); ++j)
+	if (topo.node_num == 1)
+		for (uint64_t i = 0; i < NUM_ITERS; ++i)
 		{
-			ptr_malloc[j] = mem.malloc();
-			bclx::rput_sync({j, j, j, j, j, j, j, j}, ptr_malloc[j]);	// produce
+			bclx::barrier_sync();	// synchronize
+			tim.start();	// start the timer
+			for (uint64_t j = 0; j < BCL::nprocs(); ++j)
+			{
+				ptr_malloc[j] = mem.malloc();
+				bclx::rput_sync({j, j, j, j, j, j, j, j}, ptr_malloc[j]);	// produce
+			}
+			tim.stop();	// stop the timer
+
+			/* exchange the global pointers */
+			bclx::alltoall(ptr_malloc, ptr_free, BCL::comm);
+
+			bclx::barrier_sync();	// synchronize
+			tim.start();	// start the timer
+			for (uint64_t j = 0; j < BCL::nprocs(); ++j)
+			{
+				bclx::rget_sync(ptr_free[j]);	// consume
+				mem.free(ptr_free[j]);
+			}
+			tim.stop();	// stop the timer
 		}
-		tim.stop();	// stop the timer
-
-		/* exchange the global pointers */
-		bclx::alltoall(ptr_malloc, ptr_free);
-
-		bclx::barrier_sync();	// synchronize
-		tim.start();	// start the timer
-		for (uint64_t j = 0; j < BCL::nprocs(); ++j)
+	else // if (topo.node_num > 1)
+		for (uint64_t i = 0; i < NUM_ITERS; ++i)
 		{
-			bclx::rget_sync(ptr_free[j]);	// consume
-			mem.free(ptr_free[j]);
+			bclx::barrier_sync();	// synchronize
+			tim.start();	// start the timer
+			for (uint64_t j = 0; j < topo.node_num; ++j)
+			{
+				ptr_malloc[j] = mem.malloc();
+				bclx::rput_sync({j, j, j, j, j, j, j, j}, ptr_malloc[j]);	// produce
+			}
+			tim.stop();	// stop the timer
+
+			/* exchange the global pointers */
+			bclx::alltoall(ptr_malloc, ptr_free, topo.ctpComm);
+
+			bclx::barrier_sync();	// synchronize
+			tim.start();	// start the timer
+			for (uint64_t j = 0; j < topo.node_num; ++j)
+			{
+				bclx::rget_sync(ptr_free[j]);	// consume
+				mem.free(ptr_free[j]);
+			}
+			tim.stop();	// stop the timer
 		}
-		tim.stop();	// stop the timer
-	}
 
 	double elapsed_time = tim.get();	// get the elapsed time
 	bclx::barrier_sync();	// synchronize

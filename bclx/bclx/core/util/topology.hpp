@@ -12,7 +12,8 @@ public:
 	int		node_id;	// the compute node ID of the calling process
 	int		node_id_master;	// the compute node ID of the master process
 	int		node_num;	// # compute nodes
-	MPI_Comm	nodeComm;	// compute node's communicator of the calling process
+	MPI_Comm	nodeComm;	// the compute node's communicator of the calling process
+	MPI_Comm	ctpComm;	// the communicator of counterpart processes
 
 	topology();
 	~topology();
@@ -28,7 +29,6 @@ class sa
 
 bclx::topology::topology()
 {
-	MPI_Comm	leaderComm;
 	MPI_Group	group,
 			nodeGroup;
 	int		*temp,
@@ -46,15 +46,12 @@ bclx::topology::topology()
 	delete[] temp;
 
         MPI_Comm_rank(nodeComm, &rank);
-	if (rank == 0)
-		color = 0;
-	else //if (rank == 0)
-		color = MPI_UNDEFINED;
-	MPI_Comm_split(BCL::comm, color, BCL::rank(), &leaderComm);
+	color = rank;
+	MPI_Comm_split(BCL::comm, color, BCL::rank(), &ctpComm);
 	if (color == 0)
 	{
-		MPI_Comm_rank(leaderComm, &node_id);
-		MPI_Comm_size(leaderComm, &node_num);
+		MPI_Comm_rank(ctpComm, &node_id);
+		MPI_Comm_size(ctpComm, &node_num);
 	}
 	MPI_Bcast(&node_id, 1, MPI_INT, 0, nodeComm);
 	MPI_Bcast(&node_num, 1, MPI_INT, 0, nodeComm);
