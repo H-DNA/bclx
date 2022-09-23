@@ -74,7 +74,7 @@ int main()
 	{
 		uint64_t num_ops_per_unit = BCL::nprocs() * 2 * NUM_ITERS;
 		printf("*****************************************************************\n");
-		printf("*\tBENCHMARK\t:\tConsume\t\t\t\t*\n");
+		printf("*\tBENCHMARK\t:\tConsume2\t\t\t\t*\n");
 		printf("*\tNUM_UNITS\t:\t%lu\t\t\t\t*\n", BCL::nprocs());
 		printf("*\tNUM_OPS\t\t:\t%lu (ops/unit) \t\t*\n", num_ops_per_unit);
 		printf("*\tNUM_ITERS\t:\t%lu\t\t\t\t*\n", NUM_ITERS);
