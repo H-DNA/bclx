@@ -27,6 +27,8 @@
 
 #include "memory_dang4.h"	// Using Hazard Pointers + SPSC Unbounded Hosted Pools (push_rget)
 
+#include "memory_dang5.h"	// Using Hazard Pointers + SPSC Bounded Hosted Queues (push_rget) (TRIAL)
+
 #include "memory_bl.h"		// Baseline: Using Hazard Pointers - Scanning
 
 #include "memory_bl2.h"		// Baseline 2: Using Hazard Pointers + Minimum Locality

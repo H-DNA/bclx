@@ -1,5 +1,5 @@
-#ifndef MEMORY_DANG2_H
-#define MEMORY_DANG2_H
+#ifndef MEMORY_DANG5_H
+#define MEMORY_DANG5_H
 
 #include <cstdint>			// uint32_t...
 #include <vector>			// std::vector...
@@ -10,7 +10,7 @@
 namespace dds
 {
 
-namespace dang2
+namespace dang5
 {
 
 /* Macros */
@@ -57,15 +57,15 @@ private:
         void empty();
 };
 
-} /* namespace dang2 */
+} /* namespace dang5 */
 
 } /* namespace dds */
 
 template<typename T>
-dds::dang2::memory<T>::memory()
+dds::dang5::memory<T>::memory()
 {
 	if (BCL::rank() == MASTER_UNIT)
-		mem_manager = "DANG2";
+		mem_manager = "DANG5";
 
         gptr<gptr<T>> temp = reservation = BCL::alloc<gptr<T>>(HPS_PER_UNIT);
 	for (uint32_t i = 0; i < HPS_PER_UNIT; ++i)
@@ -99,7 +99,7 @@ dds::dang2::memory<T>::memory()
 }
 
 template<typename T>
-dds::dang2::memory<T>::~memory()
+dds::dang5::memory<T>::~memory()
 {
 	for (uint64_t i = 0; i < BCL::nprocs(); ++i)
 		for (uint64_t j = 0; j < BCL::nprocs(); ++j)
@@ -110,21 +110,8 @@ dds::dang2::memory<T>::~memory()
 }
 
 template<typename T>
-bclx::gptr<T> dds::dang2::memory<T>::malloc()
+bclx::gptr<T> dds::dang5::memory<T>::malloc()
 {
-	// if buffers[BCL::rank()] is not empty, return a gptr<T> from it
-	if (!buffers[BCL::rank()].empty())
-	{
-		// tracing
-		#ifdef  TRACING
-			++elem_ru;
-		#endif
-
-		gptr<T> ptr = buffers[BCL::rank()].back();
-		buffers[BCL::rank()].pop_back();
-		return ptr;
-	}
-
 	// if lheap.ncontig is not empty, return a gptr<T> from it
 	if (!lheap.ncontig.empty())
 	{
@@ -143,7 +130,7 @@ bclx::gptr<T> dds::dang2::memory<T>::malloc()
 		return lheap.contig.pop();
 
 	// otherwise, scan all queues to get reclaimed elems if any
-	for (uint64_t i = 0; i < queues[BCL::rank()].size(); ++i)
+	/*for (uint64_t i = 0; i < queues[BCL::rank()].size(); ++i)
 	{
 		std::vector<gptr<T>> slist;
 		if (queues[BCL::rank()][i].dequeue(slist))
@@ -161,7 +148,7 @@ bclx::gptr<T> dds::dang2::memory<T>::malloc()
 		gptr<T> ptr = lheap.ncontig.back();
 		lheap.ncontig.pop_back();
 		return ptr;
-	}
+	}*/
 
 	// otherwise, get elems from the memory pool
 	if (!pool_mem.empty())
@@ -199,18 +186,23 @@ bclx::gptr<T> dds::dang2::memory<T>::malloc()
 }
 
 template<typename T>
-void dds::dang2::memory<T>::free(const gptr<T>& ptr)
+void dds::dang5::memory<T>::free(const gptr<T>& ptr)
 {
-	buffers[ptr.rank].push_back(ptr);
-	if (ptr.rank != BCL::rank() && buffers[ptr.rank].size() >= HP_WINDOW)
+	//if (ptr.rank == BCL::rank())
+		lheap.ncontig.push_back(ptr);
+	/*else // if (ptr.rank != BCL::rank())
 	{
-		queues[ptr.rank][BCL::rank()].enqueue(buffers[ptr.rank]);
-		buffers[ptr.rank].clear();
-	}
+		buffers[ptr.rank].push_back(ptr);
+		if (buffers[ptr.rank].size() >= HP_WINDOW)
+		{
+			queues[ptr.rank][BCL::rank()].enqueue(buffers[ptr.rank]);
+			buffers[ptr.rank].clear();
+		}
+	}*/
 }
 
 template<typename T>
-void dds::dang2::memory<T>::retire(const gptr<T>& ptr)
+void dds::dang5::memory<T>::retire(const gptr<T>& ptr)
 {
 	list_ret.push_back(ptr);
 	if (list_ret.size() >= HP_WINDOW)
@@ -218,13 +210,13 @@ void dds::dang2::memory<T>::retire(const gptr<T>& ptr)
 }
 
 template<typename T>
-void dds::dang2::memory<T>::op_begin() {}
+void dds::dang5::memory<T>::op_begin() {}
 
 template<typename T>
-void dds::dang2::memory<T>::op_end() {}
+void dds::dang5::memory<T>::op_end() {}
 
 template<typename T>
-bclx::gptr<T> dds::dang2::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, const gptr<T>& val_old)
+bclx::gptr<T> dds::dang5::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, const gptr<T>& val_old)
 {
 	if (val_old == nullptr)
 		return nullptr;
@@ -248,7 +240,7 @@ bclx::gptr<T> dds::dang2::memory<T>::try_reserve(const gptr<gptr<T>>& ptr, const
 }
 
 template<typename T>
-bclx::gptr<T> dds::dang2::memory<T>::reserve(const gptr<gptr<T>>& ptr)
+bclx::gptr<T> dds::dang5::memory<T>::reserve(const gptr<gptr<T>>& ptr)
 {
 	gptr<T> val_old = bclx::aget_sync(ptr);	// one RMA
 	if (val_old == nullptr)
@@ -283,7 +275,7 @@ bclx::gptr<T> dds::dang2::memory<T>::reserve(const gptr<gptr<T>>& ptr)
 }
 
 template<typename T>
-void dds::dang2::memory<T>::unreserve(const gptr<T>& ptr)
+void dds::dang5::memory<T>::unreserve(const gptr<T>& ptr)
 {
 	if (ptr == nullptr)
 		return;
@@ -304,7 +296,7 @@ void dds::dang2::memory<T>::unreserve(const gptr<T>& ptr)
 }
 
 template<typename T>
-void dds::dang2::memory<T>::empty()
+void dds::dang5::memory<T>::empty()
 {	
 	std::vector<gptr<T>>	plist;		// contain non-null hazard pointers
 	std::vector<gptr<T>>	new_dlist;	// be dlist after finishing the Scan function
@@ -354,4 +346,4 @@ void dds::dang2::memory<T>::empty()
 	list_ret = std::move(new_dlist);
 }
 
-#endif /* MEMORY_DANG2_H */
+#endif /* MEMORY_DANG5_H */
