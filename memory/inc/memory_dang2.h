@@ -143,7 +143,7 @@ bclx::gptr<T> dds::dang2::memory<T>::malloc()
 		return lheap.contig.pop();
 
 	// otherwise, scan all queues to get reclaimed elems if any
-	for (uint64_t i = 0; i < queues[BCL::rank()].size(); ++i)
+	/*for (uint64_t i = 0; i < queues[BCL::rank()].size(); ++i)
 	{
 		std::vector<gptr<T>> slist;
 		if (queues[BCL::rank()][i].dequeue(slist))
@@ -161,7 +161,7 @@ bclx::gptr<T> dds::dang2::memory<T>::malloc()
 		gptr<T> ptr = lheap.ncontig.back();
 		lheap.ncontig.pop_back();
 		return ptr;
-	}
+	}*/
 
 	// otherwise, get elems from the memory pool
 	if (!pool_mem.empty())
@@ -202,11 +202,11 @@ template<typename T>
 void dds::dang2::memory<T>::free(const gptr<T>& ptr)
 {
 	buffers[ptr.rank].push_back(ptr);
-	if (ptr.rank != BCL::rank() && buffers[ptr.rank].size() >= HP_WINDOW)
+	/*if (ptr.rank != BCL::rank() && buffers[ptr.rank].size() >= HP_WINDOW)
 	{
 		queues[ptr.rank][BCL::rank()].enqueue(buffers[ptr.rank]);
 		buffers[ptr.rank].clear();
-	}
+	}*/
 }
 
 template<typename T>
