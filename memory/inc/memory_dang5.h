@@ -188,9 +188,9 @@ bclx::gptr<T> dds::dang5::memory<T>::malloc()
 template<typename T>
 void dds::dang5::memory<T>::free(const gptr<T>& ptr)
 {
-	//if (ptr.rank == BCL::rank())
+	if (ptr.rank == BCL::rank())
 		lheap.ncontig.push_back(ptr);
-	/*else // if (ptr.rank != BCL::rank())
+	else // if (ptr.rank != BCL::rank())
 	{
 		buffers[ptr.rank].push_back(ptr);
 		if (buffers[ptr.rank].size() >= HP_WINDOW)
@@ -198,7 +198,7 @@ void dds::dang5::memory<T>::free(const gptr<T>& ptr)
 			queues[ptr.rank][BCL::rank()].enqueue(buffers[ptr.rank]);
 			buffers[ptr.rank].clear();
 		}
-	}*/
+	}
 }
 
 template<typename T>
