@@ -1,5 +1,5 @@
 # The file name of your program
-OUT = consume2
+OUT = threadtest
 
 # The path of input files
 DIR_IN = ./ben
