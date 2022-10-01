@@ -22,6 +22,7 @@ struct block
 	T	data;
 };
 
+template<typename T>
 class list_seq2
 {
 public:
@@ -30,13 +31,14 @@ public:
 	bool empty() const;
 	void set(const gptr<header>& h, const gptr<header>& t);
 	void get(gptr<header>& h, gptr<header>& t) const;
+	void push(const gptr<T>& ptr);
 	gptr<header> pop();
-	void append(const list_seq2& slist);
+	void append(const list_seq2<T>& slist);
 	void print() const;
 
 private:
-	gptr<header>	head;
-	gptr<header>	tail;
+	gptr<header>		head;
+	gptr<header>		tail;
 };
 
 template<typename T>
@@ -47,7 +49,7 @@ public:
 	~pool_ubd_spsc();
 	void clear();
 	void put(const std::vector<gptr<T>>& vals);
-	bool get(list_seq2& slist);
+	bool get(list_seq2<T>& slist);
 
 private:
 	const header		NULL_PTR;
@@ -61,38 +63,66 @@ private:
 
 /* Implementation of list_seq2 */
 
-dds::list_seq2::list_seq2() : head{nullptr}, tail{nullptr} {}
+template<typename T>
+dds::list_seq2<T>::list_seq2() : head{nullptr}, tail{nullptr} {}
 
-dds::list_seq2::~list_seq2() {}
+template<typename T>
+dds::list_seq2<T>::~list_seq2() {}
 
-bool dds::list_seq2::empty() const
+template<typename T>
+bool dds::list_seq2<T>::empty() const
 {
 	return (head == nullptr);
 }
 
-void dds::list_seq2::set(const gptr<header>& h, const gptr<header>& t)
+template<typename T>
+void dds::list_seq2<T>::set(const gptr<header>& h, const gptr<header>& t)
 {
 	head = h;
 	tail = t;
 }
 
-void dds::list_seq2::get(gptr<header>& h, gptr<header>& t) const
+template<typename T>
+void dds::list_seq2<T>::get(gptr<header>& h, gptr<header>& t) const
 {
 	h = head;
 	t = tail;
 }
 
+template<typename T>
+void dds::list_seq2<T>::push(const gptr<T>& ptr)
+{
+	header tmp;
+	tmp.next = {ptr.rank, ptr.ptr - sizeof(header)};
+	if (head == nullptr)
+	{
+		header null;
+		null.next = nullptr;
+		bclx::store(null, tmp.next);		// local
+		head = tail = tmp.next;
+	}
+	else // if (head != nullptr)
+	{
+		header tmp_head;
+		tmp_head.next = head;
+		bclx::store(tmp_head, tmp.next);	// local
+		head = tmp.next;
+	}
+}
+
 // Precondition: list_seq2 is not empty
-bclx::gptr<dds::header> dds::list_seq2::pop()
+template<typename T>
+bclx::gptr<dds::header> dds::list_seq2<T>::pop()
 {
 	gptr<header> res = head;
-	head = bclx::load(head).next;
+	head = bclx::load(head).next;	// local
 	if (head == nullptr)
 		tail = nullptr;
 	return res;
 }
 
-void dds::list_seq2::append(const list_seq2& slist)
+template<typename T>
+void dds::list_seq2<T>::append(const list_seq2& slist)
 {
 	gptr<header> slist_head, slist_tail;
 	slist.get(slist_head, slist_tail);
@@ -111,7 +141,8 @@ void dds::list_seq2::append(const list_seq2& slist)
 	}
 }
 
-void dds::list_seq2::print() const
+template<typename T>
+void dds::list_seq2<T>::print() const
 {
 	for (gptr<header> tmp = head; tmp != tail; tmp = bclx::load(tmp).next)
 		printf("[%lu]<%u, %u>\n", BCL::rank(), tmp.rank, tmp.ptr);
@@ -183,7 +214,7 @@ void dds::pool_ubd_spsc<T>::put(const std::vector<gptr<T>>& vals)
 }
 
 template<typename T>
-bool dds::pool_ubd_spsc<T>::get(list_seq2& slist)
+bool dds::pool_ubd_spsc<T>::get(list_seq2<T>& slist)
 {
 	// Get the current head address of the pool
 	gptr<header> curr = bclx::aget_sync(head_ptr);	// local

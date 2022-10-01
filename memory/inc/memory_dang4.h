@@ -21,8 +21,8 @@ using namespace bclx;
 template<typename T>
 struct list_seq3
 {
-	list_seq<T>	contig;
-	list_seq2	ncontig;
+	list_seq<block<T>>	contig;
+	list_seq2<T>		ncontig;
 };
 
 template<typename T>
@@ -52,7 +52,7 @@ private:
 	gptr<block<T>>         				pool_rep;	// deallocate global memory
 	gptr<gptr<T>>					reservation;	// be a reser array of the calling unit
 	std::vector<gptr<T>>				list_ret;	// contain retired elems
-	list_seq3<block<T>>				lheap;		// be per-unit heap
+	list_seq3<T>					lheap;		// be per-unit heap
 	std::vector<std::vector<gptr<T>>>		buffers;	// be local buffers
 	std::vector<std::vector<dds::pool_ubd_spsc<T>>>	pools;		// be SPSC unbounded pools
 
@@ -133,7 +133,7 @@ bclx::gptr<T> dds::dang4::memory<T>::malloc()
 	// otherwise, scan all pools to get reclaimed elems if any
 	for (uint64_t i = 0; i < pools[BCL::rank()].size(); ++i)
 	{
-		list_seq2 slist;
+		list_seq2<T> slist;
 		if (pools[BCL::rank()][i].get(slist))			
 			lheap.ncontig.append(slist);
 	}
@@ -163,7 +163,7 @@ bclx::gptr<T> dds::dang4::memory<T>::malloc()
 	// try to scan all pools to get relaimed elems one more
 	for (uint64_t i = 0; i < pools[BCL::rank()].size(); ++i)
 	{
-		list_seq2 slist;
+		list_seq2<T> slist;
 		if (pools[BCL::rank()][i].get(slist))
 			lheap.ncontig.append(slist);
         }
@@ -189,7 +189,7 @@ template<typename T>
 void dds::dang4::memory<T>::free(const gptr<T>& ptr)
 {
 	if (ptr.rank == BCL::rank())
-		lheap.ncontig.push_back(ptr);
+		lheap.ncontig.push(ptr);
 	else // if (ptr.rank != BCL::rank())
 	{
 		buffers[ptr.rank].push_back(ptr);

@@ -188,7 +188,7 @@ bclx::gptr<T> dds::dang2::memory<T>::malloc()
 template<typename T>
 void dds::dang2::memory<T>::free(const gptr<T>& ptr)
 {
-	if (ptr.rank == BCL::rank()
+	if (ptr.rank == BCL::rank())
 		lheap.ncontig.push_back(ptr);
 	else // if (ptr.rank != BCL::rank()
 	{
