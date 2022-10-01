@@ -9,7 +9,7 @@ namespace dds
 {
 
 	/* Macros */
-	#define		MEM_DANG4
+	#define		MEM_DANG2
 
         /* Constants */
 	const uint64_t	MASTER_UNIT	= 0;
