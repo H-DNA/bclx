@@ -49,7 +49,7 @@ int main()
 	for (uint64_t j = 0; j < ARRAY_SIZE; ++j)
 	{
 		ptr[j] = mem.malloc();
-		bclx::rput_sync({j, j, j, j, j, j, j, j}, ptr_malloc[j]);	// produce
+		bclx::rput_sync({j, j, j, j, j, j, j, j}, ptr[j]);	// produce
 	}
 	tim.stop();
 
@@ -63,7 +63,7 @@ int main()
 			bclx::rget_sync(ptr[rand]);	// consume
 			mem.free(ptr[rand]);
 			ptr[rand] = mem.malloc();
-			bclx::rput_sync({j, j, j, j, j, j, j, j}, ptr_malloc[j]);	// produce
+			bclx::rput_sync({j, j, j, j, j, j, j, j}, ptr[rand]);	// produce
 		}
 		tim.stop();	// stop the timer
 	
