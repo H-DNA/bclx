@@ -1,7 +1,7 @@
-#include <cstdint>			// uint64_t...
-#include <random>			// std::default_random_engine
-#include <bclx/bclx.hpp>		// BCL::init...
-#include "../inc/memory.h"		// dds::memory...
+#include <cstdint>		// uint64_t...
+#include <random>		// std::default_random_engine
+#include <bclx/bclx.hpp>	// BCL::init...
+#include "../inc/memory.h"	// dds::memory...
 
 /* Macros */
 #ifdef		MEM_HP
@@ -41,25 +41,29 @@ int main()
 	std::default_random_engine		generator;
 	std::uniform_int_distribution<uint64_t> distribution(0, ARRAY_SIZE - 1);
 	gptr<block>				ptr[ARRAY_SIZE];
-	//bclx::topology			topo;
 	timer					tim;
 	memory<block>				mem;
+
+	bclx::barrier_sync(); // synchronize
+	tim.start();	// start the timer
+	for (uint64_t j = 0; j < ARRAY_SIZE; ++j)
+	{
+		ptr[j] = mem.malloc();
+		bclx::rput_sync({j, j, j, j, j, j, j, j}, ptr_malloc[j]);	// produce
+	}
+	tim.stop();
 
 	for (uint64_t i = 0; i < BCL::nprocs(); ++i)
 	{
 		bclx::barrier_sync();	// synchronize
 		tim.start();	// start the timer
-		for (uint64_t j = 0; j < ARRAY_SIZE; ++j)
-		{
-			ptr[j] = mem.malloc();
-			bclx::rput_sync({j, j, j, j, j, j, j, j}, ptr[j]);	// produce
-		}
 		for (uint64_t j = 0; j < NUM_ITERS; ++j)
 		{
 			rand = distribution(generator);
-			bclx::rget_sync(ptr[rank]);	// consume
+			bclx::rget_sync(ptr[rand]);	// consume
 			mem.free(ptr[rand]);
 			ptr[rand] = mem.malloc();
+			bclx::rput_sync({j, j, j, j, j, j, j, j}, ptr_malloc[j]);	// produce
 		}
 		tim.stop();	// stop the timer
 	
