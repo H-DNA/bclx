@@ -50,10 +50,14 @@ int main()
 		bclx::barrier_sync();	// synchronize
 		tim.start();	// start the timer
 		for (uint64_t j = 0; j < ARRAY_SIZE; ++j)
+		{
 			ptr[j] = mem.malloc();
+			bclx::rput_sync({j, j, j, j, j, j, j, j}, ptr[j]);	// produce
+		}
 		for (uint64_t j = 0; j < NUM_ITERS; ++j)
 		{
 			rand = distribution(generator);
+			bclx::rget_sync(ptr[rank]);	// consume
 			mem.free(ptr[rand]);
 			ptr[rand] = mem.malloc();
 		}
@@ -72,7 +76,7 @@ int main()
 	{
 		uint64_t num_ops_per_unit = BCL::nprocs() * (ARRAY_SIZE + 2 * NUM_ITERS);
 		printf("*****************************************************************\n");
-		printf("*\tBENCHMARK\t:\tLarson\t\t\t\t*\n");
+		printf("*\tBENCHMARK\t:\tLarson2\t\t\t\t*\n");
 		printf("*\tNUM_UNITS\t:\t%lu\t\t\t\t*\n", BCL::nprocs());
 		printf("*\tNUM_OPS\t\t:\t%lu (ops/unit) \t\t*\n", num_ops_per_unit);
 		printf("*\tARRAY_SIZE\t:\t%lu\t\t\t\t*\n", ARRAY_SIZE);

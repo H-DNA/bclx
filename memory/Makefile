@@ -1,5 +1,5 @@
 # The file name of your program
-OUT = threadtest
+OUT = larson
 
 # The path of input files
 DIR_IN = ./ben

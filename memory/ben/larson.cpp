@@ -44,12 +44,16 @@ int main()
 	timer					tim;
 	memory<block>				mem;
 
+	bclx::barrier_sync(); // synchronize
+	tim.start();	// start the timer
+	for (uint64_t j = 0; j < ARRAY_SIZE; ++j)
+		ptr[j] = mem.malloc();
+	tim.stop();
+
 	for (uint64_t i = 0; i < BCL::nprocs(); ++i)
 	{
 		bclx::barrier_sync();	// synchronize
 		tim.start();	// start the timer
-		for (uint64_t j = 0; j < ARRAY_SIZE; ++j)
-			ptr[j] = mem.malloc();
 		for (uint64_t j = 0; j < NUM_ITERS; ++j)
 		{
 			rand = distribution(generator);
