@@ -111,6 +111,19 @@ dds::dang4::memory<T>::~memory()
 template<typename T>
 bclx::gptr<T> dds::dang4::memory<T>::malloc()
 {
+	// if buffers[BCL::rank()] is not empty, return a gptr<T> from it
+	if (!buffers[BCL::rank()].empty())
+	{
+		// tracing
+		#ifdef  TRACING
+			++elem_ru;
+		#endif
+		
+		gptr<T> ptr = buffers[BCL::rank()].back();
+		buffers[BCL::rank()].pop_back();
+		return ptr;
+	}
+
 	// if lheap.ncontig is not empty, return a gptr<T> from it
 	if (!lheap.ncontig.empty())
 	{
@@ -188,16 +201,11 @@ bclx::gptr<T> dds::dang4::memory<T>::malloc()
 template<typename T>
 void dds::dang4::memory<T>::free(const gptr<T>& ptr)
 {
-	if (ptr.rank == BCL::rank())
-		lheap.ncontig.push(ptr);
-	else // if (ptr.rank != BCL::rank())
+	buffers[ptr.rank].push_back(ptr);
+	if (ptr.rank != BCL::rank() && buffers[ptr.rank].size() >= HP_WINDOW)
 	{
-		buffers[ptr.rank].push_back(ptr);
-		if (buffers[ptr.rank].size() >= HP_WINDOW)
-		{
-			pools[ptr.rank][BCL::rank()].put(buffers[ptr.rank]);
-			buffers[ptr.rank].clear();
-		}
+		pools[ptr.rank][BCL::rank()].put(buffers[ptr.rank]);
+		buffers[ptr.rank].clear();
 	}
 }
 
