@@ -73,7 +73,7 @@ int main()
 	double total_time = bclx::reduce(elapsed_time, dds::MASTER_UNIT, BCL::max<double>{});
 	if (BCL::rank() == dds::MASTER_UNIT)
 	{
-		uint64_t num_ops_per_unit = BCL::nprocs() * (ARRAY_SIZE + 2 * NUM_ITERS);
+		uint64_t num_ops_per_unit = ARRAY_SIZE + BCL::nprocs() * 2 * NUM_ITERS;
 		printf("*****************************************************************\n");
 		printf("*\tBENCHMARK\t:\tLarson\t\t\t\t*\n");
 		printf("*\tNUM_UNITS\t:\t%lu\t\t\t\t*\n", BCL::nprocs());
