@@ -59,8 +59,7 @@ int main()
 		tim.start();	// start the timer
 		for (uint64_t j = 0; j < BCL::nprocs(); ++j)
 		{
-			for (uint64_t k = 0; k < BCL::nprocs(); ++k)
-				bclx::rget_sync(ptr_free[k]);	// consume
+			bclx::rget_sync(ptr_free[j]);	// consume
 			mem.free(ptr_free[j]);
 		}
 		tim.stop();	// stop the timer

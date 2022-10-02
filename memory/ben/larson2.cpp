@@ -51,7 +51,7 @@ int main()
 		ptr[j] = mem.malloc();
 		bclx::rput_sync({j, j, j, j, j, j, j, j}, ptr[j]);	// produce
 	}
-	tim.stop();
+	tim.stop();	// stop the timer
 
 	for (uint64_t i = 0; i < BCL::nprocs(); ++i)
 	{

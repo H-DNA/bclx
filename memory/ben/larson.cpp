@@ -48,7 +48,7 @@ int main()
 	tim.start();	// start the timer
 	for (uint64_t j = 0; j < ARRAY_SIZE; ++j)
 		ptr[j] = mem.malloc();
-	tim.stop();
+	tim.stop();	// stop the timer
 
 	for (uint64_t i = 0; i < BCL::nprocs(); ++i)
 	{

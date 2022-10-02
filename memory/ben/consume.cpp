@@ -54,7 +54,7 @@ int main()
 		bclx::barrier_sync();	// synchronize
 		tim.start();	// start the timer
 		for (uint64_t j = 0; j < BCL::nprocs(); ++j)
-			mem.free(ptr_free[BCL::rank()]);
+			mem.free(ptr_free[j]);
 		tim.stop();	// stop the timer
 	}
 
