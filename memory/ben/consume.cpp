@@ -11,6 +11,8 @@
 	using namespace dds::dang3;
 #elif defined	MEM_DANG4
 	using namespace dds::dang4;
+#elif defined	MEM_DANG5
+	using namespace dds::dang5;
 #else		// No Memory Reclamation
 	using namespace dds::nmr;
 #endif
@@ -47,6 +49,14 @@ int main()
 		for (uint64_t j = 0; j < BCL::nprocs(); ++j)
 			ptr_malloc[j] = mem.malloc();
 		tim.stop();	// stop the timer
+	
+		// debugging
+		if (i < 4)
+		{
+			for (uint64_t j = 0; j < BCL::nprocs(); ++j)
+				printf("[%lu]<%u, %u> ", BCL::rank(), ptr_malloc[j].rank, ptr_malloc[j].ptr);
+			printf("\n");
+		}
 
 		/* exchange the global pointers */
 		bclx::alltoall(ptr_malloc, ptr_free);

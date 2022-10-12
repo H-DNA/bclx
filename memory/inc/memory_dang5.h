@@ -55,6 +55,7 @@ private:
 	std::vector<std::vector<dds::queue_spsc<gptr<T>>>>	queues;		// be SPSC queues
 
         void empty();
+	void empty2();
 };
 
 } /* namespace dang5 */
@@ -160,12 +161,7 @@ bclx::gptr<T> dds::dang5::memory<T>::malloc()
 	}
 
 	// try to scan all queues to get relaimed elems one more
-	for (uint64_t i = 0; i < queues[BCL::rank()].size(); ++i)
-	{
-		std::vector<gptr<T>> slist;
-		if (queues[BCL::rank()][i].dequeue(slist))
-			lheap.ncontig.insert(lheap.ncontig.end(), slist.begin(), slist.end());
-        }
+	empty2();
 
         // if lheap.ncontig is not empty, return a gptr<T> from it
         if (!lheap.ncontig.empty())
@@ -188,9 +184,9 @@ bclx::gptr<T> dds::dang5::memory<T>::malloc()
 template<typename T>
 void dds::dang5::memory<T>::free(const gptr<T>& ptr)
 {
-	if (ptr.rank == BCL::rank())
+	//if (ptr.rank == BCL::rank())
 		lheap.ncontig.push_back(ptr);
-	else // if (ptr.rank != BCL::rank())
+	/*else // if (ptr.rank != BCL::rank())
 	{
 		buffers[ptr.rank].push_back(ptr);
 		if (buffers[ptr.rank].size() >= HP_WINDOW)
@@ -198,7 +194,7 @@ void dds::dang5::memory<T>::free(const gptr<T>& ptr)
 			queues[ptr.rank][BCL::rank()].enqueue(buffers[ptr.rank]);
 			buffers[ptr.rank].clear();
 		}
-	}
+	}*/
 }
 
 template<typename T>
@@ -344,6 +340,17 @@ void dds::dang5::memory<T>::empty()
 
 	// Stage 4
 	list_ret = std::move(new_dlist);
+}
+
+template<typename T>
+void dds::dang5::memory<T>::empty2()
+{
+	for (uint64_t i = 0; i < queues[BCL::rank()].size(); ++i)
+	{
+		std::vector<gptr<T>> slist;
+		if (queues[BCL::rank()][i].dequeue(slist))
+			lheap.ncontig.insert(lheap.ncontig.end(), slist.begin(), slist.end());
+	}
 }
 
 #endif /* MEMORY_DANG5_H */
