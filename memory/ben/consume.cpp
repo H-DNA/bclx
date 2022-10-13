@@ -49,14 +49,6 @@ int main()
 		for (uint64_t j = 0; j < BCL::nprocs(); ++j)
 			ptr_malloc[j] = mem.malloc();
 		tim.stop();	// stop the timer
-	
-		// debugging
-		if (i < 4)
-		{
-			for (uint64_t j = 0; j < BCL::nprocs(); ++j)
-				printf("[%lu]<%u, %u> ", BCL::rank(), ptr_malloc[j].rank, ptr_malloc[j].ptr);
-			printf("\n");
-		}
 
 		/* exchange the global pointers */
 		bclx::alltoall(ptr_malloc, ptr_free);
@@ -86,6 +78,17 @@ int main()
 		printf("*\tTHROUGHPUT\t:\t%f (ops/s)\t*\n", BCL::nprocs() * num_ops_per_unit / total_time);
 		printf("*****************************************************************\n");
 	}
+
+	// debugging
+	#ifdef	DEBUGGING
+	if (BCL::rank() == 0)
+	{
+		printf("[%lu]cnt_buffers = %lu\n", BCL::rank(), dds::cnt_buffers);
+		printf("[%lu]cnt_ncontig = %lu\n", BCL::rank(), dds::cnt_ncontig);
+		printf("[%lu]cnt_contig = %lu\n", BCL::rank(), dds::cnt_contig);
+		printf("[%lu]cnt_pool = %lu\n", BCL::rank(), dds::cnt_pool);
+	}
+	#endif
 
 	BCL::finalize();	// finalize the PGAS runtime
 

@@ -120,6 +120,11 @@ bclx::gptr<T> dds::dang2::memory<T>::malloc()
 			++elem_ru;
 		#endif
 
+		// debugging
+		#ifdef	DEBUGGING
+			++cnt_buffers;
+		#endif
+
 		gptr<T> ptr = buffers[BCL::rank()].back();
 		buffers[BCL::rank()].pop_back();
 		return ptr;
@@ -133,6 +138,11 @@ bclx::gptr<T> dds::dang2::memory<T>::malloc()
 			++elem_ru;
 		#endif
 
+		// debugging
+		#ifdef	DEBUGGING
+			++cnt_ncontig;
+		#endif
+
 		gptr<T> ptr = lheap.ncontig.back();
 		lheap.ncontig.pop_back();
 		return ptr;
@@ -140,7 +150,14 @@ bclx::gptr<T> dds::dang2::memory<T>::malloc()
 
 	// if lheap.contig is not empty, return a gptr<T> from it
 	if (!lheap.contig.empty())
+	{
+		// debugging
+		#ifdef 	DEBUGGING
+			++cnt_contig;
+		#endif
+
 		return lheap.contig.pop();
+	}
 
 	// otherwise, scan all queues to get reclaimed elems if any
 	for (uint64_t i = 0; i < queues[BCL::rank()].size(); ++i)
@@ -166,6 +183,10 @@ bclx::gptr<T> dds::dang2::memory<T>::malloc()
 	// otherwise, get elems from the memory pool
 	if (!pool_mem.empty())
 	{
+		#ifdef	DEBUGGING
+			++cnt_pool;
+		#endif
+
 		gptr<T> ptr = pool_mem.pop(HP_WINDOW);
         	lheap.contig.set(ptr, HP_WINDOW);
 

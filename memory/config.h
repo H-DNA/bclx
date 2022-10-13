@@ -9,6 +9,7 @@ namespace dds
 {
 
 	/* Macros */
+	#define		DEBUGGING
 	#define		MEM_DANG2
 
         /* Constants */
@@ -19,6 +20,12 @@ namespace dds
 	std::string	mem_manager;
 	
 	// tracing
+	#ifdef	DEBUGGING
+		uint64_t	cnt_buffers	= 0;
+		uint64_t	cnt_ncontig	= 0;
+		uint64_t	cnt_contig	= 0;
+		uint64_t	cnt_pool	= 0;	
+	#endif	
 	/*#ifdef  TRACING
         	uint64_t	succ_cs		= 0;
 		uint64_t	succ_ea 	= 0;

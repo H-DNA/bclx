@@ -87,6 +87,17 @@ int main()
 		printf("*****************************************************************\n");
 	}
 
+        // debugging
+        #ifdef  DEBUGGING
+        if (BCL::rank() == 0)
+        {
+                printf("[%lu]cnt_buffers = %lu\n", BCL::rank(), dds::cnt_buffers);
+                printf("[%lu]cnt_ncontig = %lu\n", BCL::rank(), dds::cnt_ncontig);
+                printf("[%lu]cnt_contig = %lu\n", BCL::rank(), dds::cnt_contig);
+                printf("[%lu]cnt_pool = %lu\n", BCL::rank(), dds::cnt_pool);
+        }
+        #endif
+
 	BCL::finalize();	// finalize the PGAS runtime
 
 	return 0;
