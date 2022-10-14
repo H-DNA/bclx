@@ -20,7 +20,7 @@ using namespace bclx;
 template<typename T>
 struct list_seq2
 {
-	list_seq<T>		contig;
+	sds::list<T>		contig;
 	std::vector<gptr<T>>	ncontig;
 };
 
@@ -46,7 +46,7 @@ private:
         const uint64_t		HP_TOTAL	= BCL::nprocs() * HPS_PER_UNIT;
         const uint64_t		HP_WINDOW	= HP_TOTAL * 2;
 
-	list_seq<T>						pool_mem;	// allocate global memory
+	sds::list<T>						pool_mem;	// allocate global memory
 	gptr<T>         					pool_rep;	// deallocate global memory
 	gptr<gptr<T>>						reservation;	// be a reservation array of the calling unit
 	std::vector<gptr<T>>					list_ret;	// contain retired elems
@@ -175,6 +175,11 @@ bclx::gptr<T> dds::dang2::memory<T>::malloc()
 			++elem_ru;
 		#endif
 
+		// debugging
+		#ifdef	DEBUGGING
+			++cnt_ncontig2;
+		#endif
+
 		gptr<T> ptr = lheap.ncontig.back();
 		lheap.ncontig.pop_back();
 		return ptr;
@@ -222,9 +227,19 @@ bclx::gptr<T> dds::dang2::memory<T>::malloc()
 template<typename T>
 void dds::dang2::memory<T>::free(const gptr<T>& ptr)
 {
+	// debugging
+	#ifdef	DEBUGGING
+		++cnt_free;
+	#endif
+
 	buffers[ptr.rank].push_back(ptr);
 	if (ptr.rank != BCL::rank() && buffers[ptr.rank].size() >= HP_WINDOW)
 	{
+		// debugging
+		#ifdef	DEBUGGING
+			++cnt_rfree;
+		#endif
+
 		queues[ptr.rank][BCL::rank()].enqueue(buffers[ptr.rank]);
 		buffers[ptr.rank].clear();
 	}

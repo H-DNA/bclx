@@ -10,7 +10,7 @@ namespace dds
 
 	/* Macros */
 	#define		DEBUGGING
-	#define		MEM_DANG2
+	#define		MEM_DANG4
 
         /* Constants */
 	const uint64_t	MASTER_UNIT	= 0;
@@ -23,8 +23,11 @@ namespace dds
 	#ifdef	DEBUGGING
 		uint64_t	cnt_buffers	= 0;
 		uint64_t	cnt_ncontig	= 0;
+		uint64_t	cnt_ncontig2	= 0;
 		uint64_t	cnt_contig	= 0;
 		uint64_t	cnt_pool	= 0;	
+		uint64_t	cnt_free	= 0;
+		uint64_t	cnt_rfree	= 0;
 	#endif	
 	/*#ifdef  TRACING
         	uint64_t	succ_cs		= 0;

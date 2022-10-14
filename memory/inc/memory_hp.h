@@ -19,7 +19,7 @@ using namespace bclx;
 template<typename T>
 struct list_seq2
 {
-        list_seq<T>		contig;
+	sds::list<T>		contig;
 	std::vector<gptr<T>>	ncontig;
 };
 
@@ -45,7 +45,7 @@ private:
         const uint64_t		HP_TOTAL	= BCL::nprocs() * HPS_PER_UNIT;
         const uint64_t		HP_WINDOW	= HP_TOTAL * 2;
 
-	list_seq<T>         	pool_mem;	// allocate global memory
+	sds::list<T>         	pool_mem;	// allocate global memory
 	gptr<T>         	pool_rep;	// deallocate global memory
 	gptr<gptr<T>>		reservation;	// be an array of hazard pointers of the calling unit
 	std::vector<gptr<T>>	list_ret;	// contain retired elems
@@ -100,6 +100,11 @@ bclx::gptr<T> dds::hp::memory<T>::malloc()
 			++elem_ru;
 		#endif
 
+		// debugging
+		#ifdef	DEBUGGING
+			++cnt_ncontig;
+		#endif
+
 		gptr<T> ptr = lheap.ncontig.back();
 		lheap.ncontig.pop_back();
 		return ptr;
@@ -107,11 +112,23 @@ bclx::gptr<T> dds::hp::memory<T>::malloc()
 
 	// if lheap.contig is not empty, return a gptr<T> from it
 	if (!lheap.contig.empty())
+	{
+		// debugging
+		#ifdef	DEBUGGING
+			++cnt_contig;
+		#endif
+
 		return lheap.contig.pop();
+	}
 
 	// otherwise, get elems from the memory pool
 	if (!pool_mem.empty())
 	{
+		// debugging
+		#ifdef	DEBUGGING
+			++cnt_pool;
+		#endif
+
 		gptr<T> ptr = pool_mem.pop(HP_WINDOW);
 		lheap.contig.set(ptr, HP_WINDOW);
 
@@ -148,6 +165,11 @@ void dds::hp::memory<T>::free(const gptr<T>& ptr)
 template<typename T>
 void dds::hp::memory<T>::retire(const gptr<T>& ptr)
 {
+	// debugging
+	#ifdef	DEBUGGING
+		++cnt_free;
+	#endif
+
 	list_ret.push_back(ptr);
 	if (list_ret.size() >= HP_WINDOW)
 		empty();

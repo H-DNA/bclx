@@ -93,8 +93,11 @@ int main()
         {
                 printf("[%lu]cnt_buffers = %lu\n", BCL::rank(), dds::cnt_buffers);
                 printf("[%lu]cnt_ncontig = %lu\n", BCL::rank(), dds::cnt_ncontig);
+                printf("[%lu]cnt_ncontig2 = %lu\n", BCL::rank(), dds::cnt_ncontig2);
                 printf("[%lu]cnt_contig = %lu\n", BCL::rank(), dds::cnt_contig);
                 printf("[%lu]cnt_pool = %lu\n", BCL::rank(), dds::cnt_pool);
+                printf("[%lu]cnt_free = %lu\n", BCL::rank(), dds::cnt_free);
+		printf("[%lu]cnt_rfree = %lu\n", BCL::rank(), dds::cnt_rfree);
         }
         #endif
 

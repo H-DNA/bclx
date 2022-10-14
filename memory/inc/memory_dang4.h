@@ -21,7 +21,7 @@ using namespace bclx;
 template<typename T>
 struct list_seq3
 {
-	list_seq<block<T>>	contig;
+	sds::list<block<T>>	contig;
 	list_seq2<T>		ncontig;
 };
 
@@ -48,7 +48,7 @@ private:
         const uint64_t		HP_WINDOW	= HP_TOTAL * 2;
 	//const uint64_t		MSG_SIZE	= exp2l(13);
 
-	list_seq<block<T>>         			pool_mem;	// allocate global memory
+	sds::list<block<T>>         			pool_mem;	// allocate global memory
 	gptr<block<T>>         				pool_rep;	// deallocate global memory
 	gptr<gptr<T>>					reservation;	// be a reser array of the calling unit
 	std::vector<gptr<T>>				list_ret;	// contain retired elems
@@ -118,6 +118,11 @@ bclx::gptr<T> dds::dang4::memory<T>::malloc()
 		#ifdef  TRACING
 			++elem_ru;
 		#endif
+
+		// debugging
+		#ifdef	DEBUGGING
+			++cnt_buffers;
+		#endif
 		
 		gptr<T> ptr = buffers[BCL::rank()].back();
 		buffers[BCL::rank()].pop_back();
@@ -132,6 +137,11 @@ bclx::gptr<T> dds::dang4::memory<T>::malloc()
 			++elem_ru;
 		#endif
 
+		// debugging
+		#ifdef	DEBUGGING
+			++cnt_ncontig;
+		#endif
+
 		gptr<header> ptr = lheap.ncontig.pop();
 		return {ptr.rank, ptr.ptr + sizeof(header)};
 	}
@@ -139,6 +149,11 @@ bclx::gptr<T> dds::dang4::memory<T>::malloc()
 	// if lheap.contig is not empty, return a gptr<T> from it
 	if (!lheap.contig.empty())
 	{
+		// debugging
+		#ifdef	DEBUGGING
+			++cnt_contig;
+		#endif
+
 		gptr<block<T>> ptr = lheap.contig.pop();
 		return {ptr.rank, ptr.ptr + sizeof(header)};
 	}
@@ -159,6 +174,11 @@ bclx::gptr<T> dds::dang4::memory<T>::malloc()
 			++elem_ru;
 		#endif
 
+		// debugging
+		#ifdef	DEBUGGING
+			++cnt_ncontig2;
+		#endif
+
 		gptr<header> ptr = lheap.ncontig.pop();
 		return {ptr.rank, ptr.ptr + sizeof(header)};
 	}
@@ -166,6 +186,11 @@ bclx::gptr<T> dds::dang4::memory<T>::malloc()
 	// otherwise, get elems from the memory pool
 	if (!pool_mem.empty())
 	{
+		// debugging
+		#ifdef	DEBUGGING
+			++cnt_pool;
+		#endif
+
 		gptr<block<T>> ptr = pool_mem.pop(HP_WINDOW);
         	lheap.contig.set(ptr, HP_WINDOW);
 
@@ -201,9 +226,19 @@ bclx::gptr<T> dds::dang4::memory<T>::malloc()
 template<typename T>
 void dds::dang4::memory<T>::free(const gptr<T>& ptr)
 {
+	// debugging
+	#ifdef	DEBUGGING
+		++cnt_free;
+	#endif
+
 	buffers[ptr.rank].push_back(ptr);
 	if (ptr.rank != BCL::rank() && buffers[ptr.rank].size() >= HP_WINDOW)
 	{
+		// debugging
+		#ifdef	DEBUGGING
+			++cnt_rfree;
+		#endif
+
 		pools[ptr.rank][BCL::rank()].put(buffers[ptr.rank]);
 		buffers[ptr.rank].clear();
 	}

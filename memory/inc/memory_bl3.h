@@ -19,7 +19,7 @@ using namespace bclx;
 template<typename T>
 struct list_seq2
 {
-	list_seq<T>		contig;
+	sds::list<T>		contig;
 	std::vector<gptr<T>>	ncontig;
 };
 
@@ -45,7 +45,7 @@ private:
         const uint64_t		HP_TOTAL	= BCL::nprocs() * HPS_PER_UNIT;
         const uint64_t		HP_WINDOW	= HP_TOTAL * 2;
 
-	list_seq<T>         	pool_mem;	// allocate global memory
+	sds::list<T>         	pool_mem;	// allocate global memory
 	gptr<T>         	pool_rep;	// deallocate global memory
 	gptr<gptr<T>>		reservation;	// be an array of hazard pointers of the calling unit
 	std::vector<gptr<T>>	list_ret;	// contain retired elems
