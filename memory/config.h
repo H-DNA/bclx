@@ -9,7 +9,7 @@ namespace dds
 {
 
 	/* Macros */
-	#define		DEBUGGING
+	//#define		DEBUGGING
 	#define		MEM_DANG4
 
         /* Constants */

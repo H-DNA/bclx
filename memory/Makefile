@@ -1,5 +1,5 @@
 # The file name of your program
-OUT = larson
+OUT = consume2
 
 # The path of input files
 DIR_IN = ./ben

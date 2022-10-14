@@ -50,7 +50,7 @@ int main()
 		for (uint64_t j = 0; j < BCL::nprocs(); ++j)
 		{
 			ptr_malloc[j] = mem.malloc();
-			for (uint64_t k = 0; k < BCL::nprocs(); ++k)
+			for (uint64_t k = 0; k < 2; ++k)
 				bclx::rput_sync({j, j, j, j, j, j, j, j}, ptr_malloc[j]);	// produce
 		}
 		tim.stop();	// stop the timer
@@ -62,8 +62,7 @@ int main()
 		tim.start();	// start the timer
 		for (uint64_t j = 0; j < BCL::nprocs(); ++j)
 		{
-			for (uint64_t k = 0; k < BCL::nprocs(); ++k)
-				bclx::rget_sync(ptr_free[j]);	// consume
+			bclx::rget_sync(ptr_free[j]);	// consume
 			mem.free(ptr_free[j]);
 		}
 		tim.stop();	// stop the timer
