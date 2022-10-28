@@ -10,7 +10,7 @@ namespace dds
 
 	/* Macros */
 	//#define		DEBUGGING
-	#define		MEM_DANG4
+	#define		MEM_DANG5
 
         /* Constants */
 	const uint64_t	MASTER_UNIT	= 0;

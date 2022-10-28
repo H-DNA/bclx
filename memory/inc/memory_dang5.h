@@ -1,11 +1,12 @@
 #ifndef MEMORY_DANG5_H
 #define MEMORY_DANG5_H
 
-#include <cstdint>			// uint32_t...
-#include <vector>			// std::vector...
-#include <algorithm>			// std::sort...
-#include <utility>			// std::move...
-#include "../queue/inc/queue_spsc.h"	// dds::queue_spsc...
+#include <cstdint>		// uint32_t...
+#include <vector>		// std::vector...
+#include <algorithm>		// std::sort...
+#include <utility>		// std::move...
+#include <cmath>		// exp2l...
+#include "../pool/inc/pool.h"	// dds::queue_ubd_mpsc...
 
 namespace dds
 {
@@ -18,10 +19,10 @@ using namespace bclx;
 
 /* Datatypes */
 template<typename T>
-struct list_seq2
+struct list_seq3
 {
-	sds::list<T>		contig;
-	std::vector<gptr<T>>	ncontig;
+	sds::list<block<T>>	contig;
+	list_seq2<T>		ncontig;
 };
 
 template<typename T>
@@ -45,17 +46,17 @@ private:
         const uint32_t		HPS_PER_UNIT 	= 1;
         const uint64_t		HP_TOTAL	= BCL::nprocs() * HPS_PER_UNIT;
         const uint64_t		HP_WINDOW	= HP_TOTAL * 2;
+	//const uint64_t		MSG_SIZE	= exp2l(13);
 
-	sds::list<T>						pool_mem;	// allocate global memory
-	gptr<T>         					pool_rep;	// deallocate global memory
-	gptr<gptr<T>>						reservation;	// be a reservation array of the calling unit
-	std::vector<gptr<T>>					list_ret;	// contain retired elems
-	list_seq2<T>						lheap;		// be per-unit heap
-	std::vector<std::vector<gptr<T>>>			buffers;	// be local buffers
-	std::vector<std::vector<dds::queue_spsc<gptr<T>>>>	queues;		// be SPSC queues
+	sds::list<block<T>>         			pool_mem;	// allocate global memory
+	gptr<block<T>>         				pool_rep;	// deallocate global memory
+	gptr<gptr<T>>					reservation;	// be a reser array of the calling unit
+	std::vector<gptr<T>>				list_ret;	// contain retired elems
+	list_seq3<T>					lheap;		// be per-unit heap
+	std::vector<std::vector<gptr<T>>>		buffers;	// be local buffers
+	std::vector<dds::pool_ubd_mpsc<T>>		pools;		// be MPSC unbounded pools
 
         void empty();
-	void empty2();
 };
 
 } /* namespace dang5 */
@@ -75,27 +76,20 @@ dds::dang5::memory<T>::memory()
 		++temp;
 	}
 
-	pool_rep = BCL::alloc<T>(TOTAL_OPS);
+	pool_rep = BCL::alloc<block<T>>(TOTAL_OPS);
 	if (pool_rep == nullptr)
 	{
 		printf("[%lu]ERROR: memory.memory\n", BCL::rank());
 		return;
 	}
-        pool_mem.set(pool_rep, TOTAL_OPS);
+	pool_mem.set(pool_rep, TOTAL_OPS);
 
 	list_ret.reserve(HP_WINDOW);
 
 	for (uint64_t i = 0; i < BCL::nprocs(); ++i)
 	{
-		queues.push_back(std::vector<dds::queue_spsc<gptr<T>>>());
-		for (uint64_t j = 0; j < BCL::nprocs(); ++j)
-			queues[i].push_back(dds::queue_spsc<gptr<T>>(i, TOTAL_OPS / BCL::nprocs()));
-	}
-
-	for (uint64_t i = 0; i < BCL::nprocs(); ++i)
-	{
+		pools.push_back(dds::pool_ubd_mpsc<T>(i));
 		buffers.push_back(std::vector<gptr<T>>());
-		buffers[i].reserve(HP_WINDOW);
 	}
 }
 
@@ -103,16 +97,33 @@ template<typename T>
 dds::dang5::memory<T>::~memory()
 {
 	for (uint64_t i = 0; i < BCL::nprocs(); ++i)
-		for (uint64_t j = 0; j < BCL::nprocs(); ++j)
-			queues[i][j].clear();
+		pools[i].clear();
 
-        BCL::dealloc<T>(pool_rep);
+        BCL::dealloc<block<T>>(pool_rep);
 	BCL::dealloc<gptr<T>>(reservation);
 }
 
 template<typename T>
 bclx::gptr<T> dds::dang5::memory<T>::malloc()
 {
+	// if buffers[BCL::rank()] is not empty, return a gptr<T> from it
+	if (!buffers[BCL::rank()].empty())
+	{
+		// tracing
+		#ifdef  TRACING
+			++elem_ru;
+		#endif
+
+		// debugging
+		#ifdef	DEBUGGING
+			++cnt_buffers;
+		#endif
+		
+		gptr<T> ptr = buffers[BCL::rank()].back();
+		buffers[BCL::rank()].pop_back();
+		return ptr;
+	}
+
 	// if lheap.ncontig is not empty, return a gptr<T> from it
 	if (!lheap.ncontig.empty())
 	{
@@ -121,22 +132,31 @@ bclx::gptr<T> dds::dang5::memory<T>::malloc()
 			++elem_ru;
 		#endif
 
-		gptr<T> ptr = lheap.ncontig.back();
-		lheap.ncontig.pop_back();
-		return ptr;
+		// debugging
+		#ifdef	DEBUGGING
+			++cnt_ncontig;
+		#endif
+
+		gptr<header> ptr = lheap.ncontig.pop();
+		return {ptr.rank, ptr.ptr + sizeof(header)};
 	}
 
 	// if lheap.contig is not empty, return a gptr<T> from it
 	if (!lheap.contig.empty())
-		return lheap.contig.pop();
-
-	// otherwise, scan all queues to get reclaimed elems if any
-	/*for (uint64_t i = 0; i < queues[BCL::rank()].size(); ++i)
 	{
-		std::vector<gptr<T>> slist;
-		if (queues[BCL::rank()][i].dequeue(slist))
-			lheap.ncontig.insert(lheap.ncontig.end(), slist.begin(), slist.end());
+		// debugging
+		#ifdef	DEBUGGING
+			++cnt_contig;
+		#endif
+
+		gptr<block<T>> ptr = lheap.contig.pop();
+		return {ptr.rank, ptr.ptr + sizeof(header)};
 	}
+
+	// otherwise, scan my hosted pool to get reclaimed elems if any
+	list_seq2<T> slist;
+	if (pools[BCL::rank()].get(slist))			
+		lheap.ncontig.append(slist);
 	
 	// if lheap.ncontig is not empty, return a gptr<T> from it
 	if (!lheap.ncontig.empty())
@@ -146,22 +166,34 @@ bclx::gptr<T> dds::dang5::memory<T>::malloc()
 			++elem_ru;
 		#endif
 
-		gptr<T> ptr = lheap.ncontig.back();
-		lheap.ncontig.pop_back();
-		return ptr;
-	}*/
+		// debugging
+		#ifdef	DEBUGGING
+			++cnt_ncontig2;
+		#endif
+
+		gptr<header> ptr = lheap.ncontig.pop();
+		return {ptr.rank, ptr.ptr + sizeof(header)};
+	}
 
 	// otherwise, get elems from the memory pool
 	if (!pool_mem.empty())
 	{
-		gptr<T> ptr = pool_mem.pop(HP_WINDOW);
+		// debugging
+		#ifdef	DEBUGGING
+			++cnt_pool;
+		#endif
+
+		gptr<block<T>> ptr = pool_mem.pop(HP_WINDOW);
         	lheap.contig.set(ptr, HP_WINDOW);
 
-                return lheap.contig.pop();
+                ptr = lheap.contig.pop();
+                return {ptr.rank, ptr.ptr + sizeof(header)};
 	}
 
-	// try to scan all queues to get relaimed elems one more
-	empty2();
+	// try to scan my hosted pool to get relaimed elems one more
+	list_seq2<T> slist2;
+	if (pools[BCL::rank()].get(slist2))
+		lheap.ncontig.append(slist2);
 
         // if lheap.ncontig is not empty, return a gptr<T> from it
         if (!lheap.ncontig.empty())
@@ -171,9 +203,8 @@ bclx::gptr<T> dds::dang5::memory<T>::malloc()
 			++elem_ru;
 		#endif
 
-		gptr<T> ptr = lheap.ncontig.back();
-		lheap.ncontig.pop_back();
-                return ptr;
+                gptr<header> ptr = lheap.ncontig.pop();
+                return {ptr.rank, ptr.ptr + sizeof(header)};
         }
 	
 	// otherwise, return nullptr
@@ -184,17 +215,22 @@ bclx::gptr<T> dds::dang5::memory<T>::malloc()
 template<typename T>
 void dds::dang5::memory<T>::free(const gptr<T>& ptr)
 {
-	//if (ptr.rank == BCL::rank())
-		lheap.ncontig.push_back(ptr);
-	/*else // if (ptr.rank != BCL::rank())
+	// debugging
+	#ifdef	DEBUGGING
+		++cnt_free;
+	#endif
+
+	buffers[ptr.rank].push_back(ptr);
+	if (ptr.rank != BCL::rank() && buffers[ptr.rank].size() >= HP_WINDOW)
 	{
-		buffers[ptr.rank].push_back(ptr);
-		if (buffers[ptr.rank].size() >= HP_WINDOW)
-		{
-			queues[ptr.rank][BCL::rank()].enqueue(buffers[ptr.rank]);
-			buffers[ptr.rank].clear();
-		}
-	}*/
+		// debugging
+		#ifdef	DEBUGGING
+			++cnt_rfree;
+		#endif
+
+		pools[ptr.rank].put(buffers[ptr.rank]);
+		buffers[ptr.rank].clear();
+	}
 }
 
 template<typename T>
@@ -265,6 +301,7 @@ bclx::gptr<T> dds::dang5::memory<T>::reserve(const gptr<gptr<T>>& ptr)
 			}
 			else // if (bclx::aget_sync(temp) != NULL_PTR)
 				++temp;
+
 		printf("[%lu]ERROR: memory.reserve\n", BCL::rank());
 		return nullptr;
 	}
@@ -340,17 +377,6 @@ void dds::dang5::memory<T>::empty()
 
 	// Stage 4
 	list_ret = std::move(new_dlist);
-}
-
-template<typename T>
-void dds::dang5::memory<T>::empty2()
-{
-	for (uint64_t i = 0; i < queues[BCL::rank()].size(); ++i)
-	{
-		std::vector<gptr<T>> slist;
-		if (queues[BCL::rank()][i].dequeue(slist))
-			lheap.ncontig.insert(lheap.ncontig.end(), slist.begin(), slist.end());
-	}
 }
 
 #endif /* MEMORY_DANG5_H */

@@ -14,6 +14,8 @@
 	using namespace dds::dang4;
 #elif defined	MEM_DANG5
 	using namespace dds::dang5;
+#elif defined	MEM_TRIAL
+	using namespace dds::trial;
 #else		// No Memory Reclamation
 	using namespace dds::nmr;
 #endif
