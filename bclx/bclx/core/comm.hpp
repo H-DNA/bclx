@@ -95,8 +95,14 @@ inline T load(const gptr<T> &src)
 	return rv;
 }
 
+template<typename T, typename U>
+inline void rget_sync(const gptr<U> &src, std::vector<T> &dst, const U &type)
+{
+        rread_sync(src, dst, type);
+}
+
 template<typename T>
-inline T* rget_sync(const gptr<T> &src, T *dst, const size_t &size)
+inline void rget_sync(const gptr<T> &src, T *dst, const size_t &size)
 {
 	rread_sync(src, dst, size);
 }

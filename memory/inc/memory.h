@@ -25,9 +25,9 @@
 
 #include "memory_dang3.h"	// Using Hazard Pointers + SPSC Bounded Hosted Queues (push_load)
 
-#include "memory_dang4.h"	// Using Hazard Pointers + SPSC Unbounded Hosted Pools (push_rget)
+//#include "memory_dang4.h"	// Using Hazard Pointers + SPSC Unbounded Hosted Pools (push_rget)
 
-#include "memory_dang5.h"	// Using Hazard Pointers + MPSC Unbounded Hosted Pools (push_rget)
+//#include "memory_dang5.h"	// Using Hazard Pointers + MPSC Unbounded Hosted Pools (push_rget)
 
 #include "memory_trial.h"	// A copy of dang2 (TRIAL)
 

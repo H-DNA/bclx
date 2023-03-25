@@ -1,5 +1,8 @@
 # The file name of your program
-OUT = consume2
+OUT = thread_test
+
+# The bclx::allocator
+ALLOC = HYDRALLOC
 
 # The path of input files
 DIR_IN = ./ben
@@ -25,7 +28,7 @@ FLAGS = -std=gnu++17 -O3
 all : $(DIR_OUT)/$(OUT)
 
 $(DIR_OUT)/$(OUT) : $(DIR_IN)/$(OUT).cpp
-	mpic++ $(DIR_IN)/$(OUT).cpp -o $(DIR_OUT)/$(OUT) $(FLAGS) -I$(DIR_BCL) -I$(DIR_BCLX)
+	mpic++ $(DIR_IN)/$(OUT).cpp -o $(DIR_OUT)/$(OUT) $(FLAGS) -I$(DIR_BCL) -I$(DIR_BCLX) -D$(ALLOC)
 
 # Run your program
 run : $(DIR_OUT)/$(OUT)

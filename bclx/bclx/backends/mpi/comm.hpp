@@ -19,7 +19,8 @@ inline void rwrite_sync(const T *src, const gptr<T> &dst, const size_t &size)
 template<typename T, typename U>
 inline void rwrite_sync(const std::vector<T> &src, const gptr<U> &dst, const U &type)
 {
-	MPI_Put(src.data(), src.size()*sizeof(T), MPI_CHAR, dst.rank, dst.ptr, 1, type.get(), BCL::win);
+	MPI_Put(src.data(), type.get_elem_count()*sizeof(T),
+			MPI_CHAR, dst.rank, dst.ptr, 1, type.get_elem_type(), BCL::win);
 	MPI_Win_flush(dst.rank, BCL::win);
 }
 
@@ -75,6 +76,14 @@ inline void rread_sync(const gptr<T> &src, T *dst, const size_t &size)
 {
 	MPI_Get(dst, size*sizeof(T), MPI_CHAR, src.rank, src.ptr, size*sizeof(T), MPI_CHAR, BCL::win);
 	MPI_Win_flush(src.rank, BCL::win);
+}
+
+template<typename T, typename U>
+inline void rread_sync(const gptr<U> &src, std::vector<T> &dst, const U &type)
+{
+	MPI_Get(dst.data(), type.get_elem_count()*sizeof(T), MPI_CHAR,
+			src.rank, src.ptr, 1, type.get_elem_type(), BCL::win);
+        MPI_Win_flush(src.rank, BCL::win);
 }
 
 template<typename T>

@@ -14,7 +14,14 @@ struct header
 };
 
 template<typename T>
-struct block
+union sblock
+{
+	header	head;
+	T	data;
+};
+
+template<typename T>
+struct lblock
 {
 	header	head;
 	T	data;

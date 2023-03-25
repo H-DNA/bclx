@@ -10,83 +10,101 @@ namespace dds
 
 using namespace bclx;
 
-template<typename T>
 class pool_ubd_mpsc
 {
 public:
-	pool_ubd_mpsc(const uint64_t& host);
+	pool_ubd_mpsc(const gptr<gptr<block>>& hp);
+	pool_ubd_mpsc(const uint64_t&	host,
+			const uint64_t&	obj_size,
+			const bool&	is_small,
+			const bool&	is_sync);
 	~pool_ubd_mpsc();
 	void clear();
-	void put(const std::vector<gptr<T>>& vals);
-	bool get(list_seq2<T>& slist);
+	void put(const std::vector<gptr<void>>& vals);
+	bool get(list_seq2& slist);
+
+	gptr<gptr<block>>	head_ptr;
 
 private:
-	const header		NULL_PTR;
-	const uint64_t		HOST;
-	gptr<gptr<header>>	head_ptr;
-	gptr<header>		head_addr;
-	gptr<block<T>>		dummy;
-};
+	gptr<block>		head_addr;
+}; /* pool_ubd_mpsc */
 
 } /* namespace dds */
 
 /* Implementation of pool_ubd_mpsc */
 
-template<typename T>
-dds::pool_ubd_mpsc<T>::pool_ubd_mpsc(const uint64_t& host)
-				: HOST{host}
+dds::pool_ubd_mpsc::pool_ubd_mpsc(const gptr<gptr<block>>& hp)
+		: head_ptr{hp} {}
+
+dds::pool_ubd_mpsc::pool_ubd_mpsc(const uint64_t&	host,
+				const uint64_t&		obj_size,
+				const bool&		is_small,
+				const bool&		is_sync)
 {
 	// initialize the pool locally
-	if (BCL::rank() == HOST)
+	if (BCL::rank() == host)
 	{
-		head_ptr = BCL::alloc<gptr<header>>(1);
-		dummy = BCL::alloc<block<T>>(1);
-		head_addr = {dummy.rank, dummy.ptr};
+		head_ptr = BCL::alloc<gptr<block>>(1);
+		if (head_ptr == nullptr)
+		{
+			printf("[%lu]ERROR: pool_ubd_mpsc::pool_ubd_mpsc\n", BCL::rank());
+			return;
+		}
+
+		gptr<char> dummy = BCL::alloc<char>(obj_size);
+		if (dummy == nullptr)
+		{
+			printf("[%lu]ERROR: pool_ubd_mpsc::pool_ubd_mpsc\n", BCL::rank());
+			return;
+		}
+
+		if (is_small)	// the block is SMALL
+			head_addr = {dummy.rank, dummy.ptr + 8};
+		else	// the block is LARGE
+			head_addr = {dummy.rank, dummy.ptr + 16};
 		bclx::store(head_addr, head_ptr);
 	}
 
-	// broadcast	
-	head_ptr = BCL::broadcast(head_ptr, HOST);
+	// broadcast
+	if (is_sync)	
+		head_ptr = BCL::broadcast(head_ptr, host);
 }
 
-template<typename T>
-dds::pool_ubd_mpsc<T>::~pool_ubd_mpsc() {}
+dds::pool_ubd_mpsc::~pool_ubd_mpsc() {}
 
-template<typename T>
-void dds::pool_ubd_mpsc<T>::clear()
+void dds::pool_ubd_mpsc::clear()
 {
-	if (BCL::rank() == HOST)
+	/*if (BCL::rank() == HOST)
 	{
 		BCL::dealloc<block<T>>(dummy);
-		BCL::dealloc<gptr<header>>(head_ptr);
-	}
+		BCL::dealloc<gptr<block>>(head_ptr);
+	}*/
 }
 
-template<typename T>
-void dds::pool_ubd_mpsc<T>::put(const std::vector<gptr<T>>& vals)
+void dds::pool_ubd_mpsc::put(const std::vector<gptr<void>>& vals)
 {
 	// Prepare for the remote linked list
 	std::vector<int64_t>	disp;
-	std::vector<header>	buffer;
-	header			tmp;
+	std::vector<block>	buffer;
+	block			tmp;
 	for (uint64_t i = 0; i < vals.size() - 1; ++i)
 	{
 		disp.push_back(int64_t(vals[i].ptr) - int64_t(vals[0].ptr));
-		tmp.next = {vals[i + 1].rank, vals[i + 1].ptr - sizeof(header)};
+		tmp.next = {vals[i + 1].rank, vals[i + 1].ptr};
 		buffer.push_back(tmp);
 	}
 
 	// Link the remote global pointers
-	gptr<rll_t>	base = {vals[0].rank, vals[0].ptr - sizeof(header)};
+	gptr<rll_t>	base = {vals[0].rank, vals[0].ptr};
 	rll_t		rll(disp);
 	bclx::rput_sync(buffer, base, rll);	// remote
 	
 	// Get the current head address
-	gptr<header> curr = bclx::aget_sync(head_ptr);	// remote
+	gptr<block> curr = bclx::aget_sync(head_ptr);	// remote
 
 	// Update the last remote global pointer and the head pointer of the pool
-	gptr<gptr<header>> last = {vals[vals.size() - 1].rank, vals[vals.size() - 1].ptr - sizeof(header)};
-	gptr<header> result;
+	gptr<gptr<block>> last = {vals[vals.size() - 1].rank, vals[vals.size() - 1].ptr};
+	gptr<block> result;
 	head_addr = {base.rank, base.ptr};
 	while (true)
 	{
@@ -104,11 +122,10 @@ void dds::pool_ubd_mpsc<T>::put(const std::vector<gptr<T>>& vals)
 	}
 }
 
-template<typename T>
-bool dds::pool_ubd_mpsc<T>::get(list_seq2<T>& slist)
+bool dds::pool_ubd_mpsc::get(list_seq2& slist)
 {
 	// Get the current head address of the pool
-	gptr<header> curr = bclx::aget_sync(head_ptr);	// local
+	gptr<block> curr = bclx::aget_sync(head_ptr);	// local
 
 	// Check if the head has been changed by the producer
 	if (curr == head_addr)

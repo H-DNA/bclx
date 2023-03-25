@@ -8,20 +8,23 @@ const uint64_t	BLOCK_SIZE_MAX	= 512;
 const uint64_t	NUM_ITERS	= 5000;
 const uint64_t	ARRAY_SIZE	= 100;
 
-// debugging
-//const uint64_t  NUM_ITERS       = 2;
-//const uint64_t  ARRAY_SIZE      = 2;
+struct block
+{
+	bclx::gptr<void>	ptr;
+	uint64_t		size;
+};
 
 int main()
 {		
 	BCL::init();	// initialize the PGAS runtime
 
 	uint64_t				index;
-	uint64_t				size;
 	std::default_random_engine		generator;
 	std::uniform_int_distribution<uint64_t> distribution_index(0, ARRAY_SIZE - 1);
-	std::uniform_int_distribution<uint64_t>	distribution_size(BLOCK_SIZE_MIN, BLOCK_SIZE_MAX); 
-	bclx::gptr<void>			ptr[ARRAY_SIZE];
+	std::uniform_int_distribution<uint64_t>	distribution_size(BLOCK_SIZE_MIN, BLOCK_SIZE_MAX);
+	block					array[ARRAY_SIZE];
+	bclx::gptr<char>			tmp_ptr;
+	char*					tmp_val;
 	bclx::timer				tim;
 	bclx::memory				mem;
 
@@ -29,12 +32,12 @@ int main()
 	tim.start();	// start the timer
 	for (uint64_t j = 0; j < ARRAY_SIZE; ++j)
 	{
-		size = distribution_size(generator);
-		ptr[j] = mem.malloc(size);
-
-		// debugging
-		//printf("[%lu]malloc_1: ptr = <%u, %u>, size = %lu\n",
-		//		BCL::rank(), ptr[j].rank, ptr[j].ptr, size);
+		array[j].size = distribution_size(generator);
+		array[j].ptr = mem.malloc(array[j].size);
+		tmp_ptr = {array[j].ptr.rank, array[j].ptr.ptr};
+		tmp_val = new char[array[j].size];
+		bclx::rput_sync(tmp_val, tmp_ptr, array[j].size);	// produce
+		delete[] tmp_val;
 	}
 	tim.stop();	// stop the timer
 
@@ -45,19 +48,24 @@ int main()
 		for (uint64_t j = 0; j < NUM_ITERS; ++j)
 		{
 			index = distribution_index(generator);
-			mem.free(ptr[index]);
-			size = distribution_size(generator);
-			ptr[index] = mem.malloc(size);
+			tmp_ptr = {array[index].ptr.rank, array[index].ptr.ptr};
+			tmp_val = new char[array[index].size];
+			bclx::rget_sync(tmp_ptr, tmp_val, array[index].size);	// consume
+			delete[] tmp_val;
+			mem.free(array[index].ptr);
 
-			// debugging
-			//printf("[%lu]malloc_2: ptr = <%u, %u>, size %lu\n",
-			//		BCL::rank(), ptr[index].rank, ptr[index].ptr, size);
+			array[index].size = distribution_size(generator);
+			array[index].ptr = mem.malloc(array[index].size);
+			tmp_ptr = {array[index].ptr.rank, array[index].ptr.ptr};
+			tmp_val = new char[array[index].size];
+			bclx::rput_sync(tmp_val, tmp_ptr, array[index].size);	// produce
+			delete[] tmp_val;
 		}
 		tim.stop();	// stop the timer
 	
-		/* exchange the global pointers */
-		bclx::send(ptr, (BCL::rank() + 1) % BCL::nprocs(), ARRAY_SIZE);
-		bclx::recv(ptr, (BCL::rank() + BCL::nprocs() - 1) % BCL::nprocs(), ARRAY_SIZE);
+		/* exchange the blocks */
+		bclx::send(array, (BCL::rank() + 1) % BCL::nprocs(), ARRAY_SIZE);
+		bclx::recv(array, (BCL::rank() + BCL::nprocs() - 1) % BCL::nprocs(), ARRAY_SIZE);
 	}
 
 	double elapsed_time = tim.get();	// get the elapsed time
@@ -68,7 +76,7 @@ int main()
 	{
 		uint64_t num_ops_per_unit = ARRAY_SIZE + BCL::nprocs() * 2 * NUM_ITERS;
 		printf("*****************************************************************\n");
-		printf("*\tBENCHMARK\t:\tLarson\t\t\t\t*\n");
+		printf("*\tBENCHMARK\t:\tLarson-rev\t\t\t*\n");
 		printf("*\tNUM_UNITS\t:\t%lu\t\t\t\t*\n", BCL::nprocs());
 		printf("*\tNUM_OPS\t\t:\t%lu (ops/unit) \t\t*\n", num_ops_per_unit);
 		printf("*\tARRAY_SIZE\t:\t%lu\t\t\t\t*\n", ARRAY_SIZE);
@@ -79,20 +87,6 @@ int main()
 		printf("*\tTHROUGHPUT\t:\t%f (ops/s)\t\t*\n", BCL::nprocs() * num_ops_per_unit / total_time);
 		printf("*****************************************************************\n");
 	}
-
-        // debugging
-        #ifdef  DEBUGGING
-        if (BCL::rank() == 0)
-        {
-                //printf("[%lu]cnt_buffers = %lu\n", BCL::rank(), bclx::cnt_buffers);
-                printf("[%lu]cnt_ncontig = %lu\n", BCL::rank(), bclx::cnt_ncontig);
-                //printf("[%lu]cnt_ncontig2 = %lu\n", BCL::rank(), bclx::cnt_ncontig2);
-                printf("[%lu]cnt_contig = %lu\n", BCL::rank(), bclx::cnt_contig);
-                printf("[%lu]cnt_bcl = %lu\n", BCL::rank(), bclx::cnt_bcl);
-                printf("[%lu]cnt_lfree = %lu\n", BCL::rank(), bclx::cnt_lfree);
-		printf("[%lu]cnt_rfree = %lu\n", BCL::rank(), bclx::cnt_rfree);
-        }
-        #endif
 
 	BCL::finalize();	// finalize the PGAS runtime
 
