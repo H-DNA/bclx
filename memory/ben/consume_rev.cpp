@@ -11,9 +11,7 @@ int main()
 
 	bclx::gptr<void>	ptr_malloc[BCL::nprocs()],
 				ptr_free[BCL::nprocs()];
-	bclx::gptr<char>	tmp_ptr;
-	char			tmp_val[BLOCK_SIZE];
-	bclx::topology		topo;
+	char			val[BLOCK_SIZE];
 	bclx::timer		tim;
 	bclx::memory		mem;
 
@@ -24,8 +22,7 @@ int main()
 		for (uint64_t j = 0; j < BCL::nprocs(); ++j)
 		{
 			ptr_malloc[j] = mem.malloc(BLOCK_SIZE);
-			tmp_ptr = {ptr_malloc[j].rank, ptr_malloc[j].ptr};
-			bclx::rput_sync(tmp_val, tmp_ptr, BLOCK_SIZE);	// produce
+			bclx::rput_sync(val, {ptr_malloc[j].rank, ptr_malloc[j].ptr}, BLOCK_SIZE);	// produce
 		}
 		tim.stop();	// stop the timer
 
@@ -36,8 +33,7 @@ int main()
 		tim.start();	// start the timer
 		for (uint64_t j = 0; j < BCL::nprocs(); ++j)
 		{
-			tmp_ptr = {ptr_free[j].rank, ptr_free[j].ptr};
-			bclx::rget_sync(tmp_ptr, tmp_val, BLOCK_SIZE);	// consume
+			bclx::rget_sync({ptr_free[j].rank, ptr_free[j].ptr}, val, BLOCK_SIZE);	// consume
 			mem.free(ptr_free[j]);
 		}
 		tim.stop();	// stop the timer
@@ -61,6 +57,20 @@ int main()
 		printf("*\tTHROUGHPUT\t:\t%f (ops/s)\t\t*\n", BCL::nprocs() * num_ops_per_unit / total_time);
 		printf("*****************************************************************\n");
 	}
+
+	// debugging
+	#ifdef	DEBUGGING
+        if (BCL::rank() == bclx::MASTER_UNIT)
+	{
+		//printf("[%lu]cnt_buffers = %lu\n", BCL::rank(), bclx::cnt_buffers);
+		printf("[%lu]cnt_ncontig = %lu\n", BCL::rank(), bclx::cnt_ncontig);
+		printf("[%lu]cnt_ncontig2 = %lu\n", BCL::rank(), bclx::cnt_ncontig2);
+		printf("[%lu]cnt_contig = %lu\n", BCL::rank(), bclx::cnt_contig);
+ 		printf("[%lu]cnt_bcl = %lu\n", BCL::rank(), bclx::cnt_bcl);
+		printf("[%lu]cnt_lfree = %lu\n", BCL::rank(), bclx::cnt_lfree);
+		printf("[%lu]cnt_rfree = %lu\n", BCL::rank(), bclx::cnt_rfree);
+	}
+	#endif
 
 	BCL::finalize();	// finalize the PGAS runtime
 

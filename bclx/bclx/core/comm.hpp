@@ -4,6 +4,12 @@ namespace bclx
 {
 
 template<typename T>
+inline void store(const T *src, const gptr<T> &dst, const size_t &size)
+{
+	lwrite(src, dst, size);
+}
+
+template<typename T>
 inline void store(const T &src, const gptr<T> &dst)
 {
 	lwrite(&src, dst, 1);

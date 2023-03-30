@@ -3,16 +3,9 @@
 #include <bclx/bclx.hpp>	// BCL::init...
 
 /* Benchmark-specific tuning parameters */
-const uint64_t	BLOCK_SIZE_MIN	= 8;
-const uint64_t	BLOCK_SIZE_MAX	= 512;
+const uint64_t	BLOCK_SIZE	= 1024;
 const uint64_t	NUM_ITERS	= 5000;
 const uint64_t	ARRAY_SIZE	= 100;
-
-struct block
-{
-	bclx::gptr<void>	ptr;
-	uint64_t		size;
-};
 
 int main()
 {		
@@ -20,24 +13,18 @@ int main()
 
 	uint64_t				index;
 	std::default_random_engine		generator;
-	std::uniform_int_distribution<uint64_t> distribution_index(0, ARRAY_SIZE - 1);
-	std::uniform_int_distribution<uint64_t>	distribution_size(BLOCK_SIZE_MIN, BLOCK_SIZE_MAX);
-	block					array[ARRAY_SIZE];
-	bclx::gptr<char>			tmp_ptr;
-	char*					tmp_val;
+	std::uniform_int_distribution<uint64_t> distribution(0, ARRAY_SIZE - 1);
+	bclx::gptr<void>			array[ARRAY_SIZE];
+	char					data[BLOCK_SIZE];
 	bclx::timer				tim;
 	bclx::memory				mem;
 
 	bclx::barrier_sync(); // synchronize
 	tim.start();	// start the timer
-	for (uint64_t j = 0; j < ARRAY_SIZE; ++j)
+	for (uint64_t i = 0; i < ARRAY_SIZE; ++i)
 	{
-		array[j].size = distribution_size(generator);
-		array[j].ptr = mem.malloc(array[j].size);
-		tmp_ptr = {array[j].ptr.rank, array[j].ptr.ptr};
-		tmp_val = new char[array[j].size];
-		bclx::rput_sync(tmp_val, tmp_ptr, array[j].size);	// produce
-		delete[] tmp_val;
+		array[i] = mem.malloc(BLOCK_SIZE);
+		bclx::store(data, {array[i].rank, array[i].ptr}, BLOCK_SIZE);	// produce
 	}
 	tim.stop();	// stop the timer
 
@@ -47,19 +34,12 @@ int main()
 		tim.start();	// start the timer
 		for (uint64_t j = 0; j < NUM_ITERS; ++j)
 		{
-			index = distribution_index(generator);
-			tmp_ptr = {array[index].ptr.rank, array[index].ptr.ptr};
-			tmp_val = new char[array[index].size];
-			bclx::rget_sync(tmp_ptr, tmp_val, array[index].size);	// consume
-			delete[] tmp_val;
-			mem.free(array[index].ptr);
+			index = distribution(generator);
+			bclx::rget_sync({array[index].rank, array[index].ptr}, data, BLOCK_SIZE);	// consume
+			mem.free(array[index]);
 
-			array[index].size = distribution_size(generator);
-			array[index].ptr = mem.malloc(array[index].size);
-			tmp_ptr = {array[index].ptr.rank, array[index].ptr.ptr};
-			tmp_val = new char[array[index].size];
-			bclx::rput_sync(tmp_val, tmp_ptr, array[index].size);	// produce
-			delete[] tmp_val;
+			array[index] = mem.malloc(BLOCK_SIZE);
+			bclx::rput_sync(data, {array[index].rank, array[index].ptr}, BLOCK_SIZE);	// produce
 		}
 		tim.stop();	// stop the timer
 	
@@ -81,12 +61,26 @@ int main()
 		printf("*\tNUM_OPS\t\t:\t%lu (ops/unit) \t\t*\n", num_ops_per_unit);
 		printf("*\tARRAY_SIZE\t:\t%lu\t\t\t\t*\n", ARRAY_SIZE);
 		printf("*\tNUM_ITERS\t:\t%lu\t\t\t\t*\n", NUM_ITERS);
-		printf("*\tBLOCK_SIZE\t:\t%lu-%lu (bytes) \t\t\t*\n", BLOCK_SIZE_MIN, BLOCK_SIZE_MAX);
+		printf("*\tBLOCK_SIZE\t:\t%lu (bytes) \t\t\t*\n", BLOCK_SIZE);
 		printf("*\tMEM_ALLOC\t:\t%s\t\t\t*\n", mem.get_name());
                 printf("*\tEXEC_TIME\t:\t%f (s)\t\t\t*\n", total_time);
 		printf("*\tTHROUGHPUT\t:\t%f (ops/s)\t\t*\n", BCL::nprocs() * num_ops_per_unit / total_time);
 		printf("*****************************************************************\n");
 	}
+
+	// debugging
+	#ifdef	DEBUGGING
+	if (BCL::rank() == bclx::MASTER_UNIT)
+	{
+		//printf("[%lu]cnt_buffers = %lu\n", BCL::rank(), bclx::cnt_buffers);
+		printf("[%lu]cnt_ncontig = %lu\n", BCL::rank(), bclx::cnt_ncontig);
+		printf("[%lu]cnt_ncontig2 = %lu\n", BCL::rank(), bclx::cnt_ncontig2);
+		printf("[%lu]cnt_contig = %lu\n", BCL::rank(), bclx::cnt_contig);
+		printf("[%lu]cnt_bcl = %lu\n", BCL::rank(), bclx::cnt_bcl);
+		printf("[%lu]cnt_lfree = %lu\n", BCL::rank(), bclx::cnt_lfree);
+		printf("[%lu]cnt_rfree = %lu\n", BCL::rank(), bclx::cnt_rfree);
+	}
+	#endif
 
 	BCL::finalize();	// finalize the PGAS runtime
 

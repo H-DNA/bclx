@@ -7,10 +7,6 @@ const uint64_t	BLOCK_SIZE	= 64;
 const uint64_t	NUM_ITERS	= 5000;
 const uint64_t	NUM_BLOCKS	= 7 * exp2l(15);
 
-// debugging
-//const uint64_t        NUM_ITERS       = 2;
-//const uint64_t        NUM_BLOCKS      = 16;
-
 int main()
 {
 	BCL::init();	// initialize the PGAS runtime
@@ -25,12 +21,7 @@ int main()
 	for (uint64_t i = 0; i < NUM_ITERS; ++i)
 	{
 		for (uint64_t j = 0; j < NUM_OPS_PER_UNIT; ++j)
-		{
 			ptr[j] = mem.malloc(BLOCK_SIZE);
-
-			// debugging
-			// printf("[%lu]malloc: ptr = <%u, %u>\n", BCL::rank(), ptr[j].rank, ptr[j].ptr);
-		}
 		for (uint64_t j = 0; j < NUM_OPS_PER_UNIT; ++j)
 			mem.free(ptr[j]);
 	}
@@ -55,14 +46,14 @@ int main()
 
         // debugging
         #ifdef  DEBUGGING
-        if (BCL::rank() == 0)
+        if (BCL::rank() == bclx::MASTER_UNIT)
         {
                 //printf("[%lu]cnt_buffers = %lu\n", BCL::rank(), bclx::cnt_buffers);
                 printf("[%lu]cnt_ncontig = %lu\n", BCL::rank(), bclx::cnt_ncontig);
 		//printf("[%lu]cnt_ncontig2 = %lu\n", BCL::rank(), bclx::cnt_ncontig2);
                 printf("[%lu]cnt_contig = %lu\n", BCL::rank(), bclx::cnt_contig);
                 printf("[%lu]cnt_bcl = %lu\n", BCL::rank(), bclx::cnt_bcl);
-		printf("[%lu]cnt_free = %lu\n", BCL::rank(), bclx::cnt_free);
+		printf("[%lu]cnt_lfree = %lu\n", BCL::rank(), bclx::cnt_lfree);
 		//printf("[%lu]cnt_rfree = %lu\n", BCL::rank(), bclx::cnt_rfree);
         }
         #endif

@@ -2,8 +2,6 @@
 #define POOL_H
 
 #include "../config.h"		// Configurations
-				
-#include "common.h"		// Common
 
 #include "pool_ubd_spsc.h"	// A Single-Producer/Single-Consumer Unbounded Hosted Pool
 

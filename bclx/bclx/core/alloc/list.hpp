@@ -143,10 +143,18 @@ void bclx::list_seq2::get(gptr<block>& 	h,
 void bclx::list_seq2::push(const gptr<block>&	h,
 			const gptr<block>& 	t)
 {
-	block tmp;
-	tmp.next = h;
-	bclx::store(tmp, tail);     // local access
-	tail = t;
+	if (head == nullptr)
+	{
+		head = h;
+		tail = t;
+	}
+	else // if (head != nullptr)
+	{
+		block tmp;
+		tmp.next = h;
+		bclx::store(tmp, tail);     // local access
+		tail = t;
+	}
 }
 
 void bclx::list_seq2::push(const list_seq2& list)
@@ -156,13 +164,14 @@ void bclx::list_seq2::push(const list_seq2& list)
 	push(h, t);
 }
 
-// Precondition: the list 
+// Precondition: the list is not currently empty 
 bclx::gptr<void> bclx::list_seq2::pop()
 {
 	gptr<void> res = {head.rank, head.ptr};
-	head = bclx::load(head).next;	// local access
-	if (head == nullptr)
-		tail = nullptr;
+	if (head == tail)
+		head = tail = nullptr;
+	else // if (head != tail)
+		head = bclx::load(head).next;	// local access
 	return res;
 }
 
@@ -200,13 +209,16 @@ void bclx::list_seq3::push(const list_seq2& list)
 {
         gptr<block> head, tail;
         list.get(head, tail);
-        for (uint64_t i = 0; i < batch_num; ++i)
+
+        for (uint64_t i = 0; i < batch_num - 1; ++i)
         {
                 processed.push_back({head.rank, head.ptr});
-                head = bclx::load(head).next;
+                head = bclx::load(head).next;	// local access
         }
-        if (head != nullptr)
-                unprocessed.push(head, tail);
+	processed.push_back({head.rank, head.ptr});
+
+        if (head != tail)
+                unprocessed.push(bclx::load(head).next, tail);	// local access
 }
 
 // Precondition: the list is not currently empty
@@ -214,6 +226,7 @@ bclx::gptr<void> bclx::list_seq3::pop()
 {
 	if (!unprocessed.empty())
 		return unprocessed.pop();
+
 	gptr<void> res = processed.back();
 	processed.pop_back();
 	return res;

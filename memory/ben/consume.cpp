@@ -5,9 +5,6 @@
 const uint64_t	BLOCK_SIZE	= 64;
 const uint64_t	NUM_ITERS	= 5000;
 
-// debugging
-//const uint64_t	NUM_ITERS	= 8;
-
 int main()
 {		
 	BCL::init();	// initialize the PGAS runtime
@@ -22,18 +19,8 @@ int main()
 		bclx::barrier_sync();	// synchronize
 		tim.start();	// start the timer
 		for (uint64_t j = 0; j < BCL::nprocs(); ++j)
-		{
 			ptr_malloc[j] = mem.malloc(BLOCK_SIZE);
-
-			// debugging
-			//if (BCL::rank() == bclx::MASTER_UNIT)
-			//	printf("[%lu]malloc: ptr = <%u, %u>\n", BCL::rank(), ptr_malloc[j].rank, ptr_malloc[j].ptr);
-		}
 		tim.stop();	// stop the timer
-
-		// debugging
-		//if (BCL::rank() == bclx::MASTER_UNIT)
-		//	printf("\n");
 
 		/* exchange the global pointers */
 		bclx::alltoall(ptr_malloc, ptr_free);
@@ -41,18 +28,8 @@ int main()
 		bclx::barrier_sync();	// synchronize
 		tim.start();	// start the timer
 		for (uint64_t j = 0; j < BCL::nprocs(); ++j)
-		{
-			// debugging
-			//if (BCL::rank() == bclx::MASTER_UNIT)
-			//	printf("[%lu]free: ptr = <%u, %u>\n", BCL::rank(), ptr_free[j].rank, ptr_free[j].ptr);
-
 			mem.free(ptr_free[j]);
-		}
 		tim.stop();	// stop the timer
-		
-		// debugging
-		//if (BCL::rank() == bclx::MASTER_UNIT)
-		//	printf("\n");
 	}
 
 	double elapsed_time = tim.get();	// get the elapsed time
@@ -76,11 +53,11 @@ int main()
 
         // debugging
         #ifdef  DEBUGGING
-        if (BCL::rank() == 0)
+        if (BCL::rank() == bclx::MASTER_UNIT)
         {
                 //printf("[%lu]cnt_buffers = %lu\n", BCL::rank(), bclx::cnt_buffers);
                 printf("[%lu]cnt_ncontig = %lu\n", BCL::rank(), bclx::cnt_ncontig);
-                //printf("[%lu]cnt_ncontig2 = %lu\n", BCL::rank(), bclx::cnt_ncontig2);
+                printf("[%lu]cnt_ncontig2 = %lu\n", BCL::rank(), bclx::cnt_ncontig2);
                 printf("[%lu]cnt_contig = %lu\n", BCL::rank(), bclx::cnt_contig);
                 printf("[%lu]cnt_bcl = %lu\n", BCL::rank(), bclx::cnt_bcl);
 		printf("[%lu]cnt_lfree = %lu\n", BCL::rank(), bclx::cnt_lfree);

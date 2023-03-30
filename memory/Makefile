@@ -1,8 +1,8 @@
 # The file name of your program
-OUT = thread_test
+OUT = linux_scalability
 
 # The bclx::allocator
-ALLOC = HYDRALLOC
+ALLOC = IDEALLOC
 
 # The path of input files
 DIR_IN = ./ben

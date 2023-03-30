@@ -4,8 +4,8 @@
 #include <cmath>					// exp2l...
 #include <vector>					// std::vector...
 #include <unordered_map>				// std::unordered_map...
-#include <bclx/core/hydralloc/list.hpp>			// list_seq...
-#include "../../../../../pool/inc/pool_ubd_spsc.h"	// pool_ubd_spsc...
+#include <bclx/core/alloc/list.hpp>			// list_seq...
+#include "../../../../../../pool/inc/pool_ubd_spsc.h"	// pool_ubd_spsc...
 
 namespace bclx
 {
@@ -15,6 +15,8 @@ const uint64_t	SIZE_CLASS_MAX	= exp2l(12);	// 4 KB
 const uint64_t	SIZE_CLASS_MIN	= 8;		// 8 B
 const uint64_t	BATCH_SIZE_MAX	= exp2l(16);	// 64 KB
 const uint64_t	DISTANCE	= 8;		// small size classes are 8 bytes apart
+const uint64_t	FREQ_GET_RSIZE	= exp2l(10);	// the frequency of geting remote sizes
+const uint64_t	FREQ_SCAN_PIPE	= 1;		// the frequency of scanning pipes
 
 /* Interfaces */
 
@@ -49,7 +51,7 @@ class heap
 {
 public:
 	std::vector<scl_small>				small;
-	std::unordered_map<uint64_t, scl_large*>	large;	// TODO
+	std::unordered_map<uint64_t, scl_large*>	large;
 	std::vector<std::vector<gptr<void>>> 		buffers;
 	
 	heap();
@@ -80,7 +82,7 @@ bclx::scl_small::scl_small(const uint64_t& sc)
 		
 		pipes.push_back(std::vector<dds::pool_ubd_spsc>());
 		for (uint64_t j = 0; j < BCL::nprocs(); ++j)
-			pipes[i].push_back(dds::pool_ubd_spsc(i, obj_size, true, true, nullptr));
+			pipes[i].push_back(dds::pool_ubd_spsc(i, size_class, true, true, nullptr));
 	}
 }
 

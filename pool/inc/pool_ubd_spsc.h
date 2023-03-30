@@ -16,7 +16,7 @@ class pool_ubd_spsc
 {
 public:
 	pool_ubd_spsc(const uint64_t& 			host,
-			const uint64_t& 		obj_size,
+			const uint64_t& 		size_class,
 			const bool&			is_small,
 			const bool&			is_sync,
 			const gptr<gptr<block>>&	hp);
@@ -37,7 +37,7 @@ private:
 /* Implementation */
 
 dds::pool_ubd_spsc::pool_ubd_spsc(const uint64_t&		host,
-				const uint64_t&			obj_size,
+				const uint64_t&			size_class,
 				const bool&			is_small,
 				const bool&			is_sync,
 				const gptr<gptr<block>>&	hp)
@@ -47,21 +47,32 @@ dds::pool_ubd_spsc::pool_ubd_spsc(const uint64_t&		host,
 		head_ptr = BCL::alloc<gptr<block>>(1);
 		if (head_ptr == nullptr)
 		{
-			printf("[%lu]pool_ubd_spsc::pool_ubd_spsc\n", BCL::rank());
+			printf("[%lu]ERROR: pool_ubd_spsc::pool_ubd_spsc\n", BCL::rank());
 			return;
 		}
 
-		gptr<char> dummy = BCL::alloc<char>(obj_size);
+		gptr<char> dummy;
+		if (is_small)	// the block is SMALL
+			dummy = BCL::alloc<char>(size_class + 8);
+		else	// the block is LARGE
+			dummy = BCL::alloc<char>(size_class + 16);
 		if (dummy == nullptr)
 		{
-			printf("[%lu]pool_ubd_spsc::pool_ubd_spsc\n", BCL::rank());
-				return;
+			printf("[%lu]ERROR: pool_ubd_spsc::pool_ubd_spsc\n", BCL::rank());
+			return;
 		}
 
 		if (is_small)	// the block is SMALL
+		{
+			bclx::store(size_class, {dummy.rank, dummy.ptr});	// local access
 			head_addr = {dummy.rank, dummy.ptr + 8};
+		}
 		else	// the block is LARGE
+		{
+                        gptr<header> ptr_hd = {dummy.rank, dummy.ptr};
+                        bclx::store({head_ptr, size_class}, ptr_hd);    // local access
 			head_addr = {dummy.rank, dummy.ptr + 16};
+		}
 		bclx::store(head_addr, head_ptr);	// local access
 
 		if (is_sync)
@@ -128,26 +139,26 @@ void dds::pool_ubd_spsc::put(const std::vector<gptr<void>>& ptrs)
 	// Link the remote global pointers and the head pointer of the pool together
 	gptr<rll_t>	base = {ptrs[0].rank, ptrs[0].ptr};
 	rll_t		rll(disp);
-	bclx::rput_sync(buffer, base, rll);	// remote
+	bclx::rput_sync(buffer, base, rll);	// remote access
 
 	// Cache the head address of the pool
 	head_addr = {base.rank, base.ptr};
 
 	// Update the head pointer of the pool
-	bclx::aput_sync(head_addr, head_ptr);	// remote
+	bclx::aput_sync(head_addr, head_ptr);	// remote access
 }
 
 bool dds::pool_ubd_spsc::get(list_seq2& list)
 {
 	// Get the current head address of the pool
-	gptr<block> curr = bclx::aget_sync(head_ptr);	// local
+	gptr<block> curr = bclx::aget_sync(head_ptr);	// local access
 
 	// Check if the head has been changed by the producer
 	if (curr == head_addr)
 		return false;	// the queue is empty now
 
 	// Update the list
-	list.set(bclx::load(curr).next, head_addr);	// local
+	list.set(bclx::load(curr).next, head_addr);	// local access
 
 	// Cache the head of the pool
 	head_addr = curr;

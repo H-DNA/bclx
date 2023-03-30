@@ -8,10 +8,6 @@ const uint64_t	BLOCK_SIZE_MAX	= 512;
 const uint64_t	NUM_ITERS	= 5000;
 const uint64_t	ARRAY_SIZE	= 100;
 
-// debugging
-//const uint64_t  NUM_ITERS       = 2;
-//const uint64_t  ARRAY_SIZE      = 2;
-
 int main()
 {		
 	BCL::init();	// initialize the PGAS runtime
@@ -21,20 +17,16 @@ int main()
 	std::default_random_engine		generator;
 	std::uniform_int_distribution<uint64_t> distribution_index(0, ARRAY_SIZE - 1);
 	std::uniform_int_distribution<uint64_t>	distribution_size(BLOCK_SIZE_MIN, BLOCK_SIZE_MAX); 
-	bclx::gptr<void>			ptr[ARRAY_SIZE];
+	bclx::gptr<void>			array[ARRAY_SIZE];
 	bclx::timer				tim;
 	bclx::memory				mem;
 
 	bclx::barrier_sync(); // synchronize
 	tim.start();	// start the timer
-	for (uint64_t j = 0; j < ARRAY_SIZE; ++j)
+	for (uint64_t i = 0; i < ARRAY_SIZE; ++i)
 	{
 		size = distribution_size(generator);
-		ptr[j] = mem.malloc(size);
-
-		// debugging
-		//printf("[%lu]malloc_1: ptr = <%u, %u>, size = %lu\n",
-		//		BCL::rank(), ptr[j].rank, ptr[j].ptr, size);
+		array[i] = mem.malloc(size);
 	}
 	tim.stop();	// stop the timer
 
@@ -45,19 +37,16 @@ int main()
 		for (uint64_t j = 0; j < NUM_ITERS; ++j)
 		{
 			index = distribution_index(generator);
-			mem.free(ptr[index]);
-			size = distribution_size(generator);
-			ptr[index] = mem.malloc(size);
+			mem.free(array[index]);
 
-			// debugging
-			//printf("[%lu]malloc_2: ptr = <%u, %u>, size %lu\n",
-			//		BCL::rank(), ptr[index].rank, ptr[index].ptr, size);
+			size = distribution_size(generator);
+			array[index] = mem.malloc(size);
 		}
 		tim.stop();	// stop the timer
 	
 		/* exchange the global pointers */
-		bclx::send(ptr, (BCL::rank() + 1) % BCL::nprocs(), ARRAY_SIZE);
-		bclx::recv(ptr, (BCL::rank() + BCL::nprocs() - 1) % BCL::nprocs(), ARRAY_SIZE);
+		bclx::send(array, (BCL::rank() + 1) % BCL::nprocs(), ARRAY_SIZE);
+		bclx::recv(array, (BCL::rank() + BCL::nprocs() - 1) % BCL::nprocs(), ARRAY_SIZE);
 	}
 
 	double elapsed_time = tim.get();	// get the elapsed time
@@ -82,11 +71,11 @@ int main()
 
         // debugging
         #ifdef  DEBUGGING
-        if (BCL::rank() == 0)
+        if (BCL::rank() == bclx::MASTER_UNIT)
         {
                 //printf("[%lu]cnt_buffers = %lu\n", BCL::rank(), bclx::cnt_buffers);
                 printf("[%lu]cnt_ncontig = %lu\n", BCL::rank(), bclx::cnt_ncontig);
-                //printf("[%lu]cnt_ncontig2 = %lu\n", BCL::rank(), bclx::cnt_ncontig2);
+                printf("[%lu]cnt_ncontig2 = %lu\n", BCL::rank(), bclx::cnt_ncontig2);
                 printf("[%lu]cnt_contig = %lu\n", BCL::rank(), bclx::cnt_contig);
                 printf("[%lu]cnt_bcl = %lu\n", BCL::rank(), bclx::cnt_bcl);
                 printf("[%lu]cnt_lfree = %lu\n", BCL::rank(), bclx::cnt_lfree);

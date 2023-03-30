@@ -6,9 +6,6 @@
 const uint64_t	BLOCK_SIZE	= 64;
 const uint64_t	NUM_ITERS	= 7 * exp2l(25);
 
-// debugging
-//const uint64_t	NUM_ITERS	= 16;
-
 int main()
 {
 	BCL::init();	// initialize the PGAS runtime
@@ -22,10 +19,6 @@ int main()
 	for (uint64_t i = 0; i < NUM_ITERS / BCL::nprocs(); ++i)
 	{
 		ptr = mem.malloc(BLOCK_SIZE);
-
-		// debugging
-		//printf("[%lu]malloc: <%u, %u>\n", BCL::rank(), ptr.rank, ptr.ptr);
-
 		mem.free(ptr);
 	}
 	tim.stop();	// stop the timer
@@ -56,7 +49,7 @@ int main()
 		//printf("[%lu]cnt_ncontig2 = %lu\n", BCL::rank(), bclx::cnt_ncontig2);
                 printf("[%lu]cnt_contig = %lu\n", BCL::rank(), bclx::cnt_contig);
                 printf("[%lu]cnt_bcl = %lu\n", BCL::rank(), bclx::cnt_bcl);
-		printf("[%lu]cnt_free = %lu\n", BCL::rank(), bclx::cnt_free);
+		printf("[%lu]cnt_lfree = %lu\n", BCL::rank(), bclx::cnt_lfree);
 		//printf("[%lu]cnt_rfree = %lu\n", BCL::rank(), bclx::cnt_rfree);
         }
         #endif

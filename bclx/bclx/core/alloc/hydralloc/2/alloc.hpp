@@ -3,7 +3,7 @@
 #include <string>				// std::string...
 #include <cstdint>				// uint64_t...
 #include <unordered_map>			// std::unordered_map...
-#include <bclx/core/alloc/hydralloc/1/heap.hpp>	// heap...
+#include <bclx/core/alloc/hydralloc/2/heap.hpp>	// heap...
 
 namespace bclx
 {
@@ -31,7 +31,7 @@ public:
 	void free(const gptr<void>& ptr);
 
 private:
-	const std::string	NAME		= "HydrAlloc_1";
+	const std::string	NAME		= "HydrAlloc_2";
 	const uint64_t		HEADER_SIZE	= 8;
 	heap			lheap;	// per-unit heap
 }; /* class memory */
@@ -46,10 +46,7 @@ const char* bclx::memory::get_name() const
 bclx::gptr<void> bclx::memory::malloc(const uint64_t& size)
 {
 	if (size == 0)
-	{
-		printf("[%lu]ERROR: memory.malloc\n", BCL::rank());
 		return nullptr;
-	}
 
 	if (size <= SIZE_CLASS_MAX)	// the requested memory size is SMALL
 	{
@@ -85,12 +82,9 @@ bclx::gptr<void> bclx::memory::malloc(const uint64_t& size)
 		// otherwise, try to scan all pipes of the current SCL to reclaim remotely freed blocks (if any)
 		if (++scl.scan_count % FREQ_SCAN_PIPE == 0)
 		{
-			for (uint64_t i = 0; i < scl.pipes[BCL::rank()].size(); ++i)
-			{
-				list_seq2 slist;
-				if (scl.pipes[BCL::rank()][i].get(slist))
-					scl.ncontig.push(slist);
-			}
+			list_seq2 slist;
+			if (scl.pipes[BCL::rank()].get(slist))			
+				scl.ncontig.push(slist);
 		
 			// if @ncontig is not empty, allocate a block from it
 			if (!scl.ncontig.empty())
@@ -130,12 +124,9 @@ bclx::gptr<void> bclx::memory::malloc(const uint64_t& size)
 		// TODO
 		/*for (uint64_t i = 0; i < lheap.small.size(); ++i)
 		{
-			for (uint64_t j = 0; j < lheap.small[i].pipes[BCL::rank()].size(); ++j)
-			{
-				list_seq2 slist;
-				if (lheap.small[i].pipes[BCL::rank()][j].get(slist))
-					scl.ncontig.push(slist);
-			}
+			list_seq2 slist;
+			if (lheap.small[i].pipes[BCL::rank()].get(slist))
+				scl.ncontig.push(slist);
 
 			// if scl.ncontig is not empty, return a gptr<void> from it
 			if (!lheap.small[i].ncontig.empty())
@@ -293,7 +284,7 @@ void bclx::memory::free(const gptr<void>& ptr)
 					if (scl.buffers[ptr.rank].size() >= scl.batch_num)
 					{
 						// send the batch of blocks to the target process
-						scl.pipes[ptr.rank][BCL::rank()].put(scl.buffers[ptr.rank]);
+						scl.pipes[ptr.rank].put(scl.buffers[ptr.rank]);
 					
 						// reset scl.buffers[ptr.rank]
 						scl.buffers[ptr.rank].clear();
@@ -308,7 +299,7 @@ void bclx::memory::free(const gptr<void>& ptr)
 					pipe_head.ptr += BCL::rank() * sizeof(gptr<void>);
 
 					// initialize the sending pipe
-					dds::pool_ubd_spsc pipe_recv(ptr.rank, 0, false, false, pipe_head);
+					dds::pool_ubd_mpsc pipe_recv(ptr.rank, 0, false, false, pipe_head);
 
 					// send the block to the target process
 					pipe_recv.put(lheap.buffers[ptr.rank][i]);
@@ -318,6 +309,7 @@ void bclx::memory::free(const gptr<void>& ptr)
 			// reset @lheap.buffers[ptr.rank]
 			lheap.buffers[ptr.rank].clear();
 		}
+
 	}
 }
 
