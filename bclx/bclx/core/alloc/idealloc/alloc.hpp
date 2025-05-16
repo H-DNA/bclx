@@ -7,6 +7,15 @@
 #include <bclx/core/definition.hpp>
 #include <bclx/core/comm.hpp>
 #include <bclx/core/alloc/idealloc/heap.hpp>	// heap...
+#ifdef	SHMEM
+	#include <bclx/backends/shmem/backend.hpp>
+#elif	GASNET_EX
+	#include <bclx/backends/gasnet-ex/backend.hpp>
+#elif	UPCXX
+	#include <bclx/backends/upcxx/backend.hpp>
+#else	// MPI
+	#include <bclx/backends/mpi/backend.hpp>
+#endif
 
 namespace bclx
 {
