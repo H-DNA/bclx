@@ -115,13 +115,6 @@ template <typename T> struct GlobalPtr {
 
   bool operator>=(const GlobalPtr &other) const { return !(*this < other); }
 
-  /*
-  template <typename U>
-  operator GlobalPtr <U> () const {
-    return GlobalPtr <U> (this->rank, this->ptr);
-  }
-  */
-
   operator GlobalPtr<void>() noexcept { return GlobalPtr<void>(rank, ptr); }
 
   operator const GlobalPtr<void>() const noexcept {

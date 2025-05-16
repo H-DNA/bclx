@@ -66,7 +66,7 @@ bclx::gptr<T> bclx::memory::malloc(const uint64_t& size)
 
 			gptr<void> ptr = scl.ncontig.back();
 			scl.ncontig.pop_back();
-			return (gptr<T>)ptr;
+			return {ptr.rank, ptr.ptr};
 		}
 
 		// if @contig is not empty, allocate a block from it
@@ -134,7 +134,7 @@ bclx::gptr<T> bclx::memory::malloc(const uint64_t& size)
 			{
 				gptr<void> ptr = scl->ncontig.back();
 				scl->ncontig.pop_back();
-				return (gptr<T>)ptr;
+				return {ptr.rank, ptr.ptr};
 			}
 		}
 
