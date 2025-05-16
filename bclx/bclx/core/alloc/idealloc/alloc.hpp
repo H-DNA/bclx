@@ -28,7 +28,8 @@ class memory
 {
 public:
 	const char* get_name() const;
-	gptr<void> malloc(const uint64_t& size);
+  template <typename T>
+	gptr<T> malloc(const uint64_t& size);
 	void free(const gptr<void>& ptr);
 
 private:
@@ -44,7 +45,8 @@ const char* bclx::memory::get_name() const
 	return NAME.c_str();
 }
 
-bclx::gptr<void> bclx::memory::malloc(const uint64_t& size)
+template <typename T>
+bclx::gptr<T> bclx::memory::malloc(const uint64_t& size)
 {
 	if (size == 0)
 		return nullptr;
@@ -64,7 +66,7 @@ bclx::gptr<void> bclx::memory::malloc(const uint64_t& size)
 
 			gptr<void> ptr = scl.ncontig.back();
 			scl.ncontig.pop_back();
-			return ptr;
+			return (gptr<T>)ptr;
 		}
 
 		// if @contig is not empty, allocate a block from it
@@ -132,7 +134,7 @@ bclx::gptr<void> bclx::memory::malloc(const uint64_t& size)
 			{
 				gptr<void> ptr = scl->ncontig.back();
 				scl->ncontig.pop_back();
-				return ptr;
+				return (gptr<T>)ptr;
 			}
 		}
 
