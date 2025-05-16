@@ -5,6 +5,7 @@
 #include <unordered_map>			// std::unordered_map...
 #include <bcl/bcl.hpp>
 #include <bclx/core/definition.hpp>
+#include <bclx/core/comm.hpp>
 #include <bclx/core/alloc/idealloc/heap.hpp>	// heap...
 
 namespace bclx
