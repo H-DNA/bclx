@@ -1,5 +1,8 @@
 #pragma once
 
+#include <bcl/bcl.hpp>
+#include <bclx/core/definition.hpp>
+
 namespace bclx
 {
 

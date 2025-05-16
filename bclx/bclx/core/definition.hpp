@@ -1,11 +1,12 @@
 #pragma once
 
-namespace bclx
-{
+#include <bcl/bcl.hpp>
+#include <cstdint>
 
-template<typename T>
-using gptr = BCL::GlobalPtr<T>;
+namespace bclx {
 
-const uint64_t	MASTER_UNIT	= 0;
+template <typename T> using gptr = BCL::GlobalPtr<T>;
+
+const uint64_t MASTER_UNIT = 0;
 
 } /* namespace bclx */

@@ -2,6 +2,8 @@
 
 #include <cstdint>	// uint64_t...
 #include <vector>	// std::vector...
+#include <bcl/bcl.hpp>
+#include <bclx/core/definition.hpp>
 
 namespace bclx
 {
