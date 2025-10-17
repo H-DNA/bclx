@@ -145,6 +145,29 @@ inline void compare_and_swap_sync(const gptr<T> &dst, const T *old_val,
   MPI_Win_flush(dst.rank, BCL::win);
 }
 
+template <typename T>
+inline void fetch_and_set_sync(const gptr<T> &dst, const T *val, T *result) {
+  MPI_Datatype datatype;
+
+  if (sizeof(T) == 8)
+    datatype = MPI_UINT64_T;
+  else if (sizeof(T) == 4)
+    datatype = MPI_UINT32_T;
+  else if (sizeof(T) == 1) {
+    if (typeid(T) == typeid(bool))
+      datatype = MPI_C_BOOL;
+    else if (typeid(T) == typeid(uint8_t))
+      datatype = MPI_UINT8_T;
+    else
+      printf("ERROR: The datatype not found!\n");
+  } else
+    printf("ERROR: The datatype not found!\n");
+
+  MPI_Fetch_and_op(val, result, datatype, dst.rank, dst.ptr, MPI_REPLACE,
+                   BCL::win);
+  MPI_Win_flush(dst.rank, BCL::win);
+}
+
 inline void barrier_sync() {
   MPI_Win_flush_all(BCL::win);
   MPI_Barrier(BCL::comm);

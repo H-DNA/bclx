@@ -165,6 +165,14 @@ inline T cas_sync(const gptr<T> &dst, const T &old_val, const T &new_val)
 }
 
 template<typename T>
+inline T swap_sync(const gptr<T> &dst, const T &old_val, const T &new_val)
+{
+	T rv;
+	fetch_and_set_sync(dst, &old_val, &new_val, &rv);
+	return rv;
+}
+
+template<typename T>
 inline T scatter(const T *src_buf, const size_t &src_rank)
 {
 	T rv;
