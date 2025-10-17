@@ -165,10 +165,10 @@ inline T cas_sync(const gptr<T> &dst, const T &old_val, const T &new_val)
 }
 
 template<typename T>
-inline T swap_sync(const gptr<T> &dst, const T &old_val, const T &new_val)
+inline T swap_sync(const gptr<T> &dst, const T &new_val)
 {
 	T rv;
-	fetch_and_set_sync(dst, &old_val, &new_val, &rv);
+	fetch_and_set_sync(dst, &new_val, &rv);
 	return rv;
 }
 
